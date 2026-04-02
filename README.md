@@ -9,6 +9,26 @@ limitations of traditional transition table methods. Reference aircraft: **Grumm
 
 ---
 
+## Environments
+
+Each environment is a branch in this repository. Complexity increases with index; strikethrough entries
+are planned but not yet implemented.
+
+| # | Name | Observation Space | Action Space | Constraints | Status |
+|---|---|---|---|---|---|
+| 0 | Base Plane | γ | δe | V = const | — |
+| 1 | Reduced Symmetric Glider Pullout | γ, V | CL (or α) | β = 0 | — |
+| 1.5 | Symmetric Glider Pullout | γ, V, α, q | δe | β = 0 | — |
+| 2 | Symmetric Stall | γ, V, α, q | δe, δt | β = 0 | — |
+| 3 | Reduced Symmetric Pullout | γ, V | CL (or α), δt | β = 0 | — |
+| 4 | Reduced Banked Glider Pullout | γ, V, μ | CL, μ̇ | β = 0 | — |
+| — | ~~Banked Glider Spin~~ | ~~γ, V, α, μ, p, q~~ | ~~δe, δa, δr~~ | ~~δr = 0, β = 0~~ | Planned |
+| — | ~~Banked Pullout~~ | ~~γ, V, α, μ, p, q~~ | ~~δe, δa, δt, δr~~ | ~~β = 0~~ | Planned |
+| 5 | Banked Spin | γ, V, α, μ, p, q | δe, δa, δt, ~~δr~~ | β = 0 | Implemented |
+| 6 | Full Environment | γ, V, α, β, μ, p, q, r | δe, δa, δt, δr | — | — |
+
+---
+
 ## Nomenclature
 
 | Symbol | Meaning |
@@ -41,22 +61,3 @@ limitations of traditional transition table methods. Reference aircraft: **Grumm
 | g | stage cost |
 | a | vector of actions |
 
----
-
-## Environments
-
-Each environment is a branch in this repository. Complexity increases with index; strikethrough entries
-are planned but not yet implemented.
-
-| # | Name | Observation Space | Action Space | Constraints | Status |
-|---|---|---|---|---|---|
-| 0 | Base Plane | γ | δe | V = const | — |
-| 1 | Reduced Symmetric Glider Pullout | γ, V | CL (or α) | β = 0 | — |
-| 1.5 | Symmetric Glider Pullout | γ, V, α, q | δe | β = 0 | — |
-| 2 | Symmetric Stall | γ, V, α, q | δe, δt | β = 0 | — |
-| 3 | Reduced Symmetric Pullout | γ, V | CL (or α), δt | β = 0 | — |
-| 4 | Reduced Banked Glider Pullout | γ, V, μ | CL, μ̇ | β = 0 | — |
-| — | ~~Banked Glider Spin~~ | ~~γ, V, α, μ, p, q~~ | ~~δe, δa, δr~~ | ~~δr = 0, β = 0~~ | Planned |
-| — | ~~Banked Pullout~~ | ~~γ, V, α, μ, p, q~~ | ~~δe, δa, δt, δr~~ | ~~β = 0~~ | Planned |
-| 5 | Banked Spin | γ, V, α, μ, p, q | δe, δa, δt, ~~δr~~ | β = 0 | Implemented |
-| 6 | Full Environment | γ, V, α, β, μ, p, q, r | δe, δa, δt, δr | — | — |
