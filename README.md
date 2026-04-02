@@ -1,4 +1,4 @@
-# stall-spin
+# 3DOF Reduced Banked Pullout Model
 
 Research code for aircraft stall and spin upset recovery using VRAM-accelerated Dynamic Programming.
 The core approach solves the minimal altitude loss recovery problem as an infinite-horizon optimal control
@@ -9,54 +9,92 @@ limitations of traditional transition table methods. Reference aircraft: **Grumm
 
 ---
 
-## Nomenclature
+## 3DOF Reduced Banked Pullout Model
 
-| Symbol | Meaning |
-|---|---|
-| ρ | air density |
-| b | wing span |
-| c | chord length |
-| S | wing surface area |
-| px, py, pz | northward, eastward and down position |
-| h | altitude, from the ground |
-| u, v, w | body-x, y and z velocity |
-| V | airspeed |
-| α | angle of attack |
-| β | sideslip angle |
-| φ, θ, ψ | roll, pitch and yaw angles |
-| γ | flight path angle |
-| μ | bank angle |
-| p̂ | dimensionless roll rate, p̂ = pb/2V |
-| p, q, r | roll, pitch and yaw rate |
-| δe | elevator deflection, positive trailing edge down |
-| δr | rudder deflection, positive trailing edge to the left |
-| δa | aileron deflection, positive trailing edge down of right aileron |
-| δt | throttle position |
-| L, D, Y | aerodynamic lift, drag and side force |
-| Mx, My, Mz | aerodynamic rolling, pitching and yawing moment about the c.g. |
-| CL, CD, CY | aerodynamic lift, drag and side force coefficient |
-| Cl, Cm, Cn | aerodynamic rolling, pitching and yawing moment coefficient about the c.g. |
-| f | system dynamic equation of motion |
-| J | value function |
-| g | stage cost |
-| a | vector of actions |
+*Based on: Bunge, Pavone & Kroo, "Minimal Altitude Loss Pullout Maneuvers," AIAA GNC 2018.*
 
----
+### Model Description
 
-## Environments
+This branch implements the reduced-order 3-DOF point-mass model from the paper, derived from
+the full 6-DOF equations under the following simplifying assumptions:
 
-Each environment is a branch in this repository. Complexity increases with index; strikethrough entries
-are planned but not yet implemented.
+- **β ≈ 0**: sideslip angle remains near zero throughout the maneuver.
+- **CL and μ̇ are directly commanded** by inner-loop controllers (high-bandwidth, dynamics neglected).
+- **CD = CD(CL)**: drag is a function of lift coefficient only (no sideslip dependency).
+- **CY ≈ 0**: lateral aerodynamic side force is negligible.
+- **Idle power** (δt not a control input; this investigation is limited to idle power maneuvers).
 
-| # | Name | Observation Space | Action Space | Constraints | Status |
-|---|---|---|---|---|---|
-| 0 | Base Plane | γ | δe | V = const | — |
-| 1 | Reduced Symmetric Glider Pullout | γ, V | CL (or α) | β = 0 | — |
-| 1.5 | Symmetric Glider Pullout | γ, V, α, q | δe | β = 0 | — |
-| 2 | Symmetric Stall | γ, V, α, q | δe, δt | β = 0 | — |
-| 3 | Reduced Symmetric Pullout | γ, V | CL (or α), δt | β = 0 | — |
-| 4 | Reduced Banked Glider Pullout | γ, V, μ | CL, μ̇ | β = 0 | — |
-| — | ~~Banked Glider Spin~~ | ~~γ, V, α, μ, p, q~~ | ~~δe, δa, δr~~ | ~~δr = 0, β = 0~~ | Planned |
-| — | ~~Banked Pullout~~ | ~~γ, V, α, μ, p, q~~ | ~~δe, δa, δt, δr~~ | ~~β = 0~~ | Planned |
-| 5 | Banked Spin | γ, V, α, μ, p, q | δe, δa, δt, ~~δr~~ | β = 0 | Implemented |
-| 6 | Full Environment | γ, V, α, β, μ, p, q, r | δe, δa, δt, δr | — | — |
+Under these assumptions the full equations of motion (Appendix A.2 of the paper) reduce to a
+3-state system with state **x = (V, γ, μ)** and control **a = (CL_cmd, μ̇_cmd)**.
+
+### Equations of Motion
+
+```
+V̇  = -g sin γ  -  (1/2) ρ (S/m) V² CD(CL_cmd)          (3a)
+
+γ̇  =  (1/2) ρ (S/m) V CL_cmd cos μ  -  (g/V) cos γ      (3b)
+
+μ̇  =  μ̇_cmd                                               (3c)
+```
+
+Where CD is a quadratic function of CL (stability-derivative model, Appendix B of the paper):
+
+```
+CD = CD₀ + CD_α α  +  CD_α² α²
+```
+
+### Control Bounds
+
+To prevent secondary stalls, CL_cmd is constrained within a safety margin of 0.2 from the
+stall limits (positive stall CL ≈ 1.2, negative stall CL ≈ −0.7 for the AA-1 Yankee):
+
+```
+-0.5  ≤  CL_cmd  ≤  1.0                                   (4)
+```
+
+The bank rate command is bounded by the steady-state roll rate achievable with maximum aileron
+deflection at the stall speed reference:
+
+```
+|μ̇_cmd|  ≤  μ̇_max  ≈  p_max                              (5a)
+
+p_max  ≈  p̂_max (2 V_ref / b)  =  |Cl_δa / Cl_p| δa_max (2 V_ref / b)   (5b)
+```
+
+For the AA-1 Yankee: Cl_p ≈ −0.5, Cl_δa ≈ −0.0595 1/deg, δa_max = 25 deg, b = 7.41 m,
+Vs ≈ 32 m/s → **p_max ≈ 30 deg/s**.
+
+### State-Space Discretization (Table 1 of the paper)
+
+| Variable | Lower Bound | Increment | Upper Bound | Units |
+|---|---|---|---|---|
+| V | 0.9 | 0.1 | 4.0 | 1/Vs |
+| γ | −180 | 5 | 0 | deg |
+| μ | −20 | 5 | 200 | deg |
+| CL_cmd | −0.5 | 0.25 | 1.0 | — |
+| μ̇_cmd | −30 | 5 | 30 | deg/s |
+
+### Optimal Control Problem
+
+The minimum altitude-loss pullout is cast as an infinite-horizon optimal control problem
+(absorbing state at level flight, γ = 0) with stage cost **g(x, a) = −V sin γ Δt + 0.01 μ̇_cmd²**
+and solved via value iteration (Bellman equation):
+
+```
+J*(x) = min  { g(x, a) + J*(x'(x, a)) }
+         a∈A
+```
+
+The extra quadratic term on μ̇_cmd smooths the bank-rate policy, which would otherwise be
+purely bang-bang.
+
+### Key Results (from the paper)
+
+- The optimal policy is **bang-bang** in both CL and μ̇: controls switch between their
+  limits upon crossing switching surfaces in state space.
+- For most initial conditions the optimal action is to **roll back to wings-level** (positive
+  CL, roll back) and execute an upright pullout.
+- For near-inverted initial attitudes (μ ≈ 150–180 deg) it can be optimal to **roll over and
+  perform an inverted pullout** (negative CL), which is cheaper in altitude than rolling back.
+- Minimum altitude loss is highly sensitive to maximum achievable CL: every reduction of 0.1
+  in CL_max costs approximately 20 m of additional altitude loss.
