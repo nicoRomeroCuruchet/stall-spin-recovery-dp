@@ -226,7 +226,7 @@ def validate_trajectories_with_casadi(pi, prefix: str) -> None:
         return
 
     try:
-        from casadi_pullout_optimizer import CasadiPulloutOptimizer
+        from solver.casadi_optimizer import CasadiPulloutOptimizer
         nlp_optimizer = CasadiPulloutOptimizer()
     except Exception as e:
         logger.error(f"Could not import CasadiPulloutOptimizer: {e}")
