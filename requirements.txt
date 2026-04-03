@@ -1,0 +1,21 @@
+# Highly optimized numeric computation and JIT compilation
+numpy>=1.24.0
+numba>=0.58.0
+
+# Reinforcement Learning environments
+gymnasium>=0.29.1
+
+# Scientific computing and interpolation
+scipy>=1.11.0
+
+# Visualization and plotting
+matplotlib>=3.8.0
+
+# Professional logging
+loguru>=0.7.2
+
+# Optional but recommended if you ever want to render environments like CartPole
+pygame>=2.5.2
+
+# Nonlinear trajectory optimization (NLP solver for CasADi pullout optimizer)
+casadi>=3.6.0
