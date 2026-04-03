@@ -12,19 +12,53 @@ Reference aircraft: **Grumman AA-1 Yankee** (Riley 1985, NASA TM-86309).
 
 ---
 
-## Problem
+## Installation
 
-Stall is one of the leading causes of fatal general aviation accidents. Upon entering a stall, the pilot must
-execute a recovery maneuver that minimizes altitude loss. This environment formulates stall recovery as an
-infinite-horizon optimal control problem:
+### Requirements
 
-$$\min_{u(\cdot)} \int_0^{T} g(x, u)\, dt, \qquad g(x, u) = -V \sin\gamma$$
+- Python 3.10+
+- CUDA 12.x and a compatible NVIDIA GPU
 
-with absorbing state at $\gamma = 0$ (level flight recovered). The state space is 4-dimensional —
-$x = (\gamma, V, \alpha, q)$ — and the problem is solved using Proximal Policy Optimization (PPO), a
-model-free deep RL algorithm, which scales where exact Dynamic Programming is intractable due to the
-curse of dimensionality. The PPO policy is validated against a DP/Value Iteration baseline on simpler
-subproblems (reproducing Bunge 2018 results).
+### Setup
+
+```bash
+git clone <repo-url>
+cd stall-spin
+python -m venv .venv
+source .venv/bin/activate
+```
+
+Install Python dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Install CuPy matching your CUDA version (the solver runs entirely on GPU):
+
+```bash
+# CUDA 12.x
+pip install cupy-cuda12x
+
+# CUDA 11.x
+pip install cupy-cuda11x
+```
+
+### Running
+
+Train the policy (or load from cache if `results/SymmetricStall_policy.npz` exists) and generate all figures:
+
+```bash
+python main.py
+```
+
+Output is written to `results/`:
+
+| File | Description |
+|---|---|
+| `SymmetricStall_policy.npz` | Trained value function and policy |
+| `symmetric_stall_Markovian_DP.png` | Recovery trajectory |
+| `symmetric_stall_Fig6_Stall_Heatmaps.png` | Optimal policy heatmaps |
 
 ---
 
@@ -83,13 +117,45 @@ Aerodynamic forces and moments use the same AA-1 Yankee coefficients as Bunge et
 
 ---
 
-## Reward Function
+## Discretization
 
-$$r = r_h + r_{\delta_e} + r_\alpha$$
+### State Space — 3,388,896 nodes
 
-- $r_h = -V\sin\gamma \cdot dt$ — altitude loss per step (primary objective)
-- $r_{\delta_e}$ — elevator rate penalty (control smoothness)
-- $r_\alpha = -20$ if $|\alpha| > 40°$ — deep stall penalty (absorbing)
+| State | Symbol | Min | Max | Bins | Resolution |
+|---|---|---|---|---|---|
+| Flight path angle | $\gamma$ | $-90°$ | $5°$ | 56 | $\approx 1.7°$ |
+| Normalized airspeed | $V/V_s$ | $0.9$ | $2.0$ | 41 | $0.028$ |
+| Angle of attack | $\alpha$ | $-14°$ | $20°$ | 36 | $\approx 0.97°$ |
+| Pitch rate | $q$ | $-50\,°/s$ | $50\,°/s$ | 41 | $\approx 2.5\,°/s$ |
+
+Total: $56 \times 41 \times 36 \times 41 = 3{,}388{,}896$ states.
+
+### Action Space — 147 actions
+
+| Control | Min | Max | Bins | Resolution |
+|---|---|---|---|---|
+| Elevator $\delta_e$ | $-25°$ | $15°$ | 21 | $2°$ |
+| Throttle $\delta_t$ | $0$ | $1$ | 7 | $\approx 0.17$ |
+
+Total: $21 \times 7 = 147$ discrete actions.
+
+### Terminal Conditions
+
+| Condition | Type |
+|---|---|
+| $\gamma \geq 0°$ | Success (absorbing) |
+| $|\alpha| \geq 40°$ | Failure — deep stall / structural limit |
+| $\gamma \leq -175°$ | Failure — unrecoverable dive |
+
+### Solver
+
+| Parameter | Value |
+|---|---|
+| Discount factor | $1.0$ (undiscounted) |
+| Convergence threshold $\theta$ | $5 \times 10^{-6}$ |
+| Max iterations | $1000$ |
+| Integration step $dt$ | $0.01\,\text{s}$ |
+| Interpolation | 4D Barycentric (CUDA) |
 
 ---
 
@@ -97,7 +163,7 @@ $$r = r_h + r_{\delta_e} + r_\alpha$$
 
 ### Optimal Policy (Elevator, Throttle, Altitude Loss)
 
-![Optimal Policy Heatmaps](img/symmetric_stall_Fig6_Stall_Heatmaps.png)
+![Optimal Policy Heatmaps](results/symmetric_stall_Fig6_Stall_Heatmaps.png)
 
 Optimal elevator deflection, throttle command and expected altitude loss as a function of
 flight path angle $\gamma$ and angle of attack $\alpha$, for three airspeeds ($V/V_s = 0.9,\,1.0,\,1.1$)
@@ -107,7 +173,7 @@ drops below stall, the policy reverses to pitch-up elevator to complete the pull
 
 ### Stall Recovery Trajectory
 
-<img src="img/symmetric_stall_Markovian_DP.png" width="500" height="600"/>
+<img src="results/symmetric_stall_Markovian_DP.png" width="700"/>
 
 Sample recovery from $\gamma = 0°$, $V/V_s = 0.95$, $\alpha = 20°$, $q = 0\,\text{deg/s}$.
 The DP policy commands immediate full nose-down elevator and full throttle, reducing $\alpha$
