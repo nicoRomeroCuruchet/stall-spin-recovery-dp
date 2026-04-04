@@ -162,12 +162,12 @@ class PolicyIterationStall:
         cuda_source = reward_defines + r'''
         extern "C" {
 
-        __device__ const float MASS = 697.18f;
+        __device__ const float MASS = 715.21f;   // Riley Table I: 1577 lb x 0.453592
         __device__ const float S = 9.1147f;
         __device__ const float CHORD = 1.22f;
         __device__ const float RHO = 1.225f;
         __device__ const float G = 9.81f;
-        __device__ const float I_YY = 1011.43f;
+        __device__ const float I_YY = 1000.60f;  // Riley Table I: 738 slug-ft2 x 1.35582
 
         // Riley (1985) NASA-TM-86309 Table III - alpha breakpoints (radians)
         __device__ const float CL_A_TBL[14] = {
@@ -268,7 +268,7 @@ class PolicyIterationStall:
 
         // CD_o at CT=0.5: negative at low alpha (propulsor generates more forward force than drag)
         __device__ const float CD_O_TBL_CT05[14] = {
-            -0.3273f, -0.3494f, -0.3474f, -0.3139f, -0.2483f,
+            -0.3273f, -0.3499f, -0.3474f, -0.3139f, -0.2483f,
             -0.2057f, -0.1435f, -0.0709f, -0.0018f,  0.0727f,
              0.2561f,  0.4322f,  0.5979f,  0.7572f
         };
@@ -289,7 +289,7 @@ class PolicyIterationStall:
 
         // CL_de at CT=0.5, /rad
         __device__ const float CL_DE_TBL_CT05[14] = {
-            0.79641f, 0.77922f, 0.75018f, 0.70474f, 0.62453f,
+            0.79641f, 0.76776f, 0.75057f, 0.70474f, 0.62453f,
             0.59588f, 0.57869f, 0.56150f, 0.53858f, 0.51566f,
             0.45837f, 0.41826f, 0.34950f, 0.31513f
         };
@@ -298,7 +298,7 @@ class PolicyIterationStall:
         __device__ const float CM_DE_TBL_CT05[14] = {
             -2.14484f, -2.25173f, -2.25746f, -2.26319f, -2.20016f,
             -2.06265f, -1.91348f, -1.78190f, -1.65032f, -1.54146f,
-            -1.29488f, -1.22040f, -1.08862f, -0.85944f
+            -1.29488f, -1.22040f, -1.08862f, -0.87662f
         };
 
         __device__ void rk4_step_4dof(

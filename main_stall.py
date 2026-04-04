@@ -29,21 +29,21 @@ def setup_symmetric_stall_experiment() -> Tuple[
     env = SymmetricStall()
     
     bins_space = {
-        # 71 bins (~1.35° resolution) — same range, more bins
-        "flight_path_angle": np.linspace(np.deg2rad(-90), np.deg2rad(5), 71, dtype=np.float32),
-        # 51 bins (~0.013 resolution) — focused on [0.85, 1.5], post-2.0 never visited
-        "airspeed_norm": np.linspace(0.85, 1.5, 51, dtype=np.float32),
-        # 51 bins (~0.94°/bin) — extended to 42° to cover full post-stall up to crash boundary
-        "alpha": np.linspace(np.deg2rad(-5), np.deg2rad(42), 51, dtype=np.float32),
-        # 51 bins (~1.76°/s resolution) — focused on [-60°, +30°], asymmetric (nose-down dominant)
-        "pitch_rate": np.linspace(np.deg2rad(-60), np.deg2rad(30), 51, dtype=np.float32),
+        # 56 bins (~1.7° resolution)
+        "flight_path_angle": np.linspace(np.deg2rad(-90), np.deg2rad(5), 56, dtype=np.float32),
+        # 41 bins
+        "airspeed_norm": np.linspace(0.9, 2.0, 41, dtype=np.float32),
+        # 36 bins (~0.97° resolution)
+        "alpha": np.linspace(np.deg2rad(-14), np.deg2rad(20), 36, dtype=np.float32),
+        # 41 bins (~2.5°/s resolution)
+        "pitch_rate": np.linspace(np.deg2rad(-50), np.deg2rad(50), 41, dtype=np.float32),
     }
     grid = np.meshgrid(*bins_space.values(), indexing="ij")
     states_space = np.vstack([g.ravel() for g in grid]).astype(np.float32).T
-    
-    # 41 x 5 = 205 actions — finer de resolution (1 deg) with bang-bang throttle
-    de_vals = np.linspace(np.deg2rad(-25), np.deg2rad(15), 41, dtype=np.float32)
-    dt_vals = np.array([0.0, 0.25, 0.5, 0.75, 1.0], dtype=np.float32)
+
+    # 21 x 7 = 147 actions
+    de_vals = np.linspace(np.deg2rad(-25), np.deg2rad(15), 21, dtype=np.float32)
+    dt_vals = np.linspace(0.0, 1.0, 7, dtype=np.float32)
     action_grid = np.meshgrid(de_vals, dt_vals, indexing="ij")
     action_space = np.vstack([a.ravel() for a in action_grid]).astype(np.float32).T
     
