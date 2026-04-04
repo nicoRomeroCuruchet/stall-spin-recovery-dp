@@ -23,7 +23,7 @@ from utils.utils import get_optimal_action  # noqa: E402
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-IMG_DIR = Path("img")
+RESULTS_DIR = Path("results")
 
 
 # ── Experiment Setup ─────────────────────────────────────────────────────
@@ -94,7 +94,8 @@ def train_or_load_policy(
 ) -> PolicyIterationStall:
     """Trains or loads pre-trained tensors from disk."""
     policy_filename = f"{env.unwrapped.__class__.__name__}_policy.npz"
-    policy_path = Path(policy_filename)
+    RESULTS_DIR.mkdir(exist_ok=True)
+    policy_path = RESULTS_DIR / policy_filename
 
     if policy_path.exists():
         logger.info(f"[+] Existing policy found: {policy_filename}. Loading...")
@@ -252,7 +253,7 @@ def plot_time_response(hist: dict, prefix: str) -> None:
     axs[-1].set_xlabel("Time (s)")
 
     plt.tight_layout()
-    out_path = IMG_DIR / f"{prefix}_Markovian_DP.png"
+    out_path = RESULTS_DIR / f"{prefix}_trajectory.png"
     out_path.parent.mkdir(exist_ok=True)
     plt.savefig(out_path, dpi=300)
     plt.close()
@@ -359,8 +360,8 @@ def plot_heatmaps(pi: PolicyIterationStall, prefix: str) -> None:
             label=label, ticks=ticks,
         )
 
-    IMG_DIR.mkdir(parents=True, exist_ok=True)
-    out_path = IMG_DIR / f"{prefix}_Fig6_Stall_Heatmaps.png"
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    out_path = RESULTS_DIR / f"{prefix}_heatmaps.png"
     plt.savefig(out_path, dpi=300, bbox_inches="tight")
     plt.close()
     logger.info(f"[+] Heatmaps saved to {out_path.resolve()}")
@@ -474,7 +475,7 @@ def _plot_dp_vs_casadi(
     axs[-1].set_xlabel("Time (s)")
 
     plt.tight_layout()
-    out_path = IMG_DIR / f"{prefix}_DP_vs_CasADi.png"
+    out_path = RESULTS_DIR / f"{prefix}_DP_vs_CasADi.png"
     out_path.parent.mkdir(exist_ok=True)
     plt.savefig(out_path, dpi=300)
     plt.close()

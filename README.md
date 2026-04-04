@@ -38,8 +38,8 @@ Output files:
 | File | Description |
 |---|---|
 | `SymmetricStall_policy.npz` | Trained value function and policy |
-| `img/symmetric_stall_trajectory.png` | Recovery trajectory (7-panel) |
-| `img/symmetric_stall_heatmaps.png` | Optimal policy heatmaps |
+| `results/symmetric_stall_trajectory.png` | Recovery trajectory (7-panel) |
+| `results/symmetric_stall_heatmaps.png` | Optimal policy heatmaps |
 
 ---
 
@@ -206,14 +206,14 @@ Total: $21 \times 7 = 147$ discrete actions.
 
 ### Optimal Policy (Elevator, Throttle, Altitude Loss)
 
-![Optimal Policy Heatmaps](img/symmetric_stall_heatmaps.png)
+![Optimal Policy Heatmaps](results/symmetric_stall_heatmaps.png)
 
 Optimal elevator deflection, throttle command and expected altitude loss as a function of
 $\gamma$ and $\alpha$, for three airspeeds ($V/V_s = 0.9,\,1.0,\,1.1$) at zero pitch rate.
 
 ### Stall Recovery Trajectory
 
-<img src="img/symmetric_stall_trajectory.png" width="850"/>
+<img src="results/symmetric_stall_trajectory.png" width="850"/>
 
 Sample recovery from $\gamma = 0°$, $V/V_s = 0.95$, $\alpha = 20°$, $q = 0\,\text{deg/s}$.
 
