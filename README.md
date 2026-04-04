@@ -72,4 +72,3 @@ Each environment is a branch in this repository.
 | 5 | Banked Spin | γ, V, α, μ, p, q | δe, δa, δt, ~~δr~~ | β = 0 | — |
 | 6 | Full Environment | γ, V, α, β, μ, p, q, r | δe, δa, δt, δr | — | — |
 
----
