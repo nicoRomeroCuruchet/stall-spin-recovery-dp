@@ -1,8 +1,8 @@
 import numpy as np
 from gymnasium import spaces
 
-from aircraft.symmetric_full_grumman import SymmetricFullGrumman
 from aircraft.airplane_env import AirplaneEnv
+from aircraft.symmetric_full_grumman import SymmetricFullGrumman
 
 
 class SymmetricStall(AirplaneEnv):
@@ -64,7 +64,9 @@ class SymmetricStall(AirplaneEnv):
         alpha = self.airplane.alpha
 
         # 3. Base Physical Reward: True physical height loss in meters
-        reward = (self.airplane.TIME_STEP * v_norm * np.sin(fpa) * self.airplane.STALL_AIRSPEED)
+        reward = (
+            self.airplane.TIME_STEP * v_norm * np.sin(fpa) * self.airplane.STALL_AIRSPEED
+        )
 
         # 4. Evaluate specific terminal conditions
         fpa_success = (fpa >= 0.0)

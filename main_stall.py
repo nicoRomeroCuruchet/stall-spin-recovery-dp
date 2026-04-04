@@ -6,7 +6,6 @@ Includes persistent policy caching and precise physical altitude tracking.
 import logging
 import os
 from pathlib import Path
-from typing import Tuple
 
 import gymnasium as gym
 import matplotlib.pyplot as plt
@@ -15,14 +14,17 @@ import numpy as np
 os.environ["NUMBA_THREADING_LAYER"] = "omp"
 
 from aircraft.symmetric_stall import SymmetricStall  # noqa: E402
-from PolicyIterationStall import PolicyIterationStall, PolicyIterationStallConfig  # noqa: E402
+from PolicyIterationStall import (  # noqa: E402
+    PolicyIterationStall,
+    PolicyIterationStallConfig,
+)
 from utils.utils import get_optimal_action  # noqa: E402
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def setup_symmetric_stall_experiment() -> Tuple[
+def setup_symmetric_stall_experiment() -> tuple[
     gym.Env, np.ndarray, np.ndarray, PolicyIterationStallConfig
 ]:
     """Configures the experiment with physically bounded state grids."""
@@ -30,7 +32,8 @@ def setup_symmetric_stall_experiment() -> Tuple[
 
     bins_space = {
         # 56 bins (~1.7° resolution)
-        "flight_path_angle": np.linspace(np.deg2rad(-90), np.deg2rad(5), 56, dtype=np.float32),
+        "flight_path_angle": np.linspace(
+            np.deg2rad(-90), np.deg2rad(5), 56, dtype=np.float32),
         # 41 bins
         "airspeed_norm": np.linspace(0.9, 2.0, 41, dtype=np.float32),
         # 36 bins (~0.97° resolution)
@@ -71,7 +74,7 @@ def train_or_load_policy(
     config: PolicyIterationStallConfig,
     prefix: str
 ) -> PolicyIterationStall:
-    """Handles training execution or loads pre-trained tensors from disk to avoid recalculation."""
+    """Handles training or loads pre-trained tensors from disk to avoid recalculation."""
     policy_filename = f"{env.unwrapped.__class__.__name__}_policy.npz"
     policy_path = Path(policy_filename)
 
@@ -207,10 +210,14 @@ def simulate_and_plot_pure_response(pi: PolicyIterationStall, prefix: str) -> No
     axs[3].plot(history_t, history_q, color='#2CA02C', linewidth=2, label=r"$q$")
     axs[3].set_ylabel(r'$q$ (deg/s)')
 
-    axs[4].step(history_t, history_de, color='#FF8C00', linewidth=2, where="post", label=r"$\delta_e$")
+    axs[4].step(
+        history_t, history_de,
+        color='#FF8C00', linewidth=2, where="post", label=r"$\delta_e$")
     axs[4].set_ylabel(r'$\delta_e$ (deg)')
 
-    axs[5].step(history_t, history_dt, color='#17BECF', linewidth=2, where="post", label=r"$\delta_t$")
+    axs[5].step(
+        history_t, history_dt,
+        color='#17BECF', linewidth=2, where="post", label=r"$\delta_t$")
     axs[5].set_ylabel(r'$\delta_t$')
     axs[5].set_ylim([-0.05, 1.05])
 
@@ -239,8 +246,9 @@ def generate_paper_heatmap_figures(pi: PolicyIterationStall, prefix: str) -> Non
     alpha_bins = np.unique(pi.states_space[:, 2])
     q_bins = np.unique(pi.states_space[:, 3])
 
-    V_4D = pi.value_function.reshape((len(gamma_bins), len(v_bins), len(alpha_bins), len(q_bins)))
-    Pol_4D = pi.policy.reshape((len(gamma_bins), len(v_bins), len(alpha_bins), len(q_bins)))
+    shape_4d = (len(gamma_bins), len(v_bins), len(alpha_bins), len(q_bins))
+    V_4D = pi.value_function.reshape(shape_4d)
+    Pol_4D = pi.policy.reshape(shape_4d)
 
     q_idx = int(np.argmin(np.abs(q_bins - 0.0)))
     v_targets = [0.9, 1.0, 1.1]
@@ -278,7 +286,8 @@ def generate_paper_heatmap_figures(pi: PolicyIterationStall, prefix: str) -> Non
 
         # -- Elevator Plot --
         ax_de = axes[i, 0]
-        pcm_de = ax_de.pcolormesh(A_mesh, G_mesh, de_slice, cmap=cmap_str, vmin=-25, vmax=15, shading='gouraud')
+        pcm_de = ax_de.pcolormesh(
+            A_mesh, G_mesh, de_slice, cmap=cmap_str, vmin=-25, vmax=15, shading='gouraud')
         if i == 0:
             ax_de.set_title('Policy for Elevator', pad=10)
         ax_de.set_ylabel(r'$\gamma$ (deg)')
@@ -286,17 +295,22 @@ def generate_paper_heatmap_figures(pi: PolicyIterationStall, prefix: str) -> Non
 
         # -- Throttle Plot --
         ax_dt = axes[i, 1]
-        pcm_dt = ax_dt.pcolormesh(A_mesh, G_mesh, dt_slice, cmap=cmap_str, vmin=0, vmax=1, shading='nearest')
+        pcm_dt = ax_dt.pcolormesh(
+            A_mesh, G_mesh, dt_slice, cmap=cmap_str, vmin=0, vmax=1, shading='nearest')
         if i == 0:
             ax_dt.set_title('Policy for Throttle', pad=10)
 
         # -- Altitude Loss Plot --
         ax_al = axes[i, 2]
-        pcm_al = ax_al.pcolormesh(A_mesh, G_mesh, alt_loss_slice, cmap=cmap_str, vmin=0, vmax=100, shading='gouraud')
+        pcm_al = ax_al.pcolormesh(
+            A_mesh, G_mesh, alt_loss_slice,
+            cmap=cmap_str, vmin=0, vmax=100, shading='gouraud')
         if i == 0:
             ax_al.set_title('Altitude Loss', pad=10)
 
-        ax_al.text(1.05, 0.5, f'V/Vs = {v_target}', transform=ax_al.transAxes, va='center', ha='left', fontsize=11)
+        ax_al.text(
+            1.05, 0.5, f'V/Vs = {v_target}',
+            transform=ax_al.transAxes, va='center', ha='left', fontsize=11)
 
         if i == 2:
             ax_de.set_xlabel(r'$\alpha$ (deg)')
@@ -310,9 +324,12 @@ def generate_paper_heatmap_figures(pi: PolicyIterationStall, prefix: str) -> Non
     cbar_ax_dt = fig.add_axes([0.42, 0.05, 0.2, 0.02])
     cbar_ax_al = fig.add_axes([0.70, 0.05, 0.2, 0.02])
 
-    fig.colorbar(pcm_de, cax=cbar_ax_de, orientation='horizontal', label=r'$\delta_e$ (deg)', ticks=[-20, 0, 15])
-    fig.colorbar(pcm_dt, cax=cbar_ax_dt, orientation='horizontal', label=r'$\delta_t$', ticks=[0.0, 0.5, 1.0])
-    fig.colorbar(pcm_al, cax=cbar_ax_al, orientation='horizontal', label='Altitude Loss (m)', ticks=[0, 100])
+    fig.colorbar(pcm_de, cax=cbar_ax_de, orientation='horizontal',
+                 label=r'$\delta_e$ (deg)', ticks=[-20, 0, 15])
+    fig.colorbar(pcm_dt, cax=cbar_ax_dt, orientation='horizontal',
+                 label=r'$\delta_t$', ticks=[0.0, 0.5, 1.0])
+    fig.colorbar(pcm_al, cax=cbar_ax_al, orientation='horizontal',
+                 label='Altitude Loss (m)', ticks=[0, 100])
 
     img_dir = Path("img")
     img_dir.mkdir(parents=True, exist_ok=True)

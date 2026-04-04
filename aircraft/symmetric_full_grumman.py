@@ -1,4 +1,5 @@
 import numpy as np
+
 from aircraft.extended_grumman import ExtendedGrumman
 
 
@@ -29,15 +30,22 @@ class SymmetricFullGrumman(ExtendedGrumman):
             ct = self._compute_ct(throttle, vt)
 
             # Bilinear interp between CT=0 and CT=0.5 tables (Riley 1985, Table III)
-            cl_o = float(self._bilinear_interp(a, ct, self._CL_O_TABLE, self._CL_O_TABLE_CT05))
-            cl_q = float(self._bilinear_interp(a, ct, self._CL_Q_TABLE, self._CL_Q_TABLE_CT05))
-            cl_de = float(self._bilinear_interp(a, ct, self._CL_DE_TABLE_CT0, self._CL_DE_TABLE_CT05))
+            cl_o = float(self._bilinear_interp(
+                a, ct, self._CL_O_TABLE, self._CL_O_TABLE_CT05))
+            cl_q = float(self._bilinear_interp(
+                a, ct, self._CL_Q_TABLE, self._CL_Q_TABLE_CT05))
+            cl_de = float(self._bilinear_interp(
+                a, ct, self._CL_DE_TABLE_CT0, self._CL_DE_TABLE_CT05))
             cl = cl_o + cl_de * elevator + cl_q * q_hat
 
-            cd = float(self._bilinear_interp(a, ct, self._CD_O_TABLE, self._CD_O_TABLE_CT05))
-            cm_o = float(self._bilinear_interp(a, ct, self._CM_O_TABLE, self._CM_O_TABLE_CT05))
-            cm_q = float(self._bilinear_interp(a, ct, self._CM_Q_TABLE, self._CM_Q_TABLE_CT05))
-            cm_de = float(self._bilinear_interp(a, ct, self._CM_DE_TABLE_CT0, self._CM_DE_TABLE_CT05))
+            cd = float(self._bilinear_interp(
+                a, ct, self._CD_O_TABLE, self._CD_O_TABLE_CT05))
+            cm_o = float(self._bilinear_interp(
+                a, ct, self._CM_O_TABLE, self._CM_O_TABLE_CT05))
+            cm_q = float(self._bilinear_interp(
+                a, ct, self._CM_Q_TABLE, self._CM_Q_TABLE_CT05))
+            cm_de = float(self._bilinear_interp(
+                a, ct, self._CM_DE_TABLE_CT0, self._CM_DE_TABLE_CT05))
             cm = cm_o + cm_de * elevator + cm_q * q_hat
 
             qS = 0.5 * self.AIR_DENSITY * self.WING_SURFACE_AREA * vt * vt
