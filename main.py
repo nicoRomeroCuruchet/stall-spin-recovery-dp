@@ -199,11 +199,13 @@ def run_dp_simulation(
         if terminated:
             if obs[2] >= np.deg2rad(40):
                 logger.warning(f"[-] +Alpha limit at {t:.2f}s")
+                break
             elif obs[2] <= np.deg2rad(-40):
                 logger.warning(f"[-] -Alpha limit at {t:.2f}s")
+                break
             elif obs[0] <= -np.pi + 0.05:
                 logger.warning(f"[-] Catastrophic dive at {t:.2f}s")
-            break
+                break
 
     return hist
 
