@@ -9,6 +9,51 @@ limitations of traditional transition table methods. Reference aircraft: **Grumm
 
 ---
 
+## Installation
+
+**Requirements:** Python 3.10+, NVIDIA GPU with CUDA-capable driver.
+
+### 1. Create virtual environment
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+```
+
+### 2. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Install CuPy (GPU backend)
+
+CuPy must be installed separately because the correct wheel depends on your CUDA driver version.
+Check your CUDA version with:
+
+```bash
+nvidia-smi
+```
+
+Then install the matching wheel:
+
+| CUDA version (nvidia-smi) | Install command |
+|---|---|
+| 11.x | `pip install cupy-cuda11x` |
+| 12.x | `pip install cupy-cuda12x` |
+| 13.x | `pip install cupy-cuda12x` *(use 12x, backward-compatible)* |
+
+Troubleshooting:
+
+CuPy does not require the full CUDA toolkit (`nvcc`) — only the NVIDIA driver. If you get a `libnvrtc.so not found` error, install the 
+
+CUDA runtime libraries:
+```bash
+pip install nvidia-cuda-nvrtc-cu12 nvidia-cuda-runtime-cu12
+```
+
+
+
 ## Environments
 
 Each environment is a branch in this repository. Complexity increases with index; strikethrough entries
@@ -27,3 +72,4 @@ are planned but not yet implemented.
 | 5 | Banked Spin | γ, V, α, μ, p, q | δe, δa, δt, ~~δr~~ | β = 0 | — |
 | 6 | Full Environment | γ, V, α, β, μ, p, q, r | δe, δa, δt, δr | — | — |
 
+---
