@@ -56,8 +56,7 @@ pip install nvidia-cuda-nvrtc-cu12 nvidia-cuda-runtime-cu12
 
 ## Environments
 
-Each environment is a branch in this repository. Complexity increases with index; strikethrough entries
-are planned but not yet implemented.
+Each environment is a branch in this repository.  
 
 | # | Name | Observation Space | Action Space | Constraints | Status | Branch
 |---|---|---|---|---|---|---|
