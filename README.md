@@ -120,7 +120,7 @@ drops below stall, the policy reverses to pitch-up elevator to complete the pull
 
 ### Stall Recovery Trajectory
 
-<img src="results/symmetric_stall_trajectory.png" width="800"/>
+<img src="results/symmetric_stall_trajectory.png" width="850"/>
 
 Sample recovery from $\gamma = 0°$, $V/V_s = 0.95$, $\alpha = 20°$, $q = 0\,\text{deg/s}$.
 The DP policy commands immediate full nose-down elevator and full throttle, reducing $\alpha$
