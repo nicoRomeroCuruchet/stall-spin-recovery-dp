@@ -12,38 +12,6 @@ Reference aircraft: **Grumman AA-1 Yankee** (Riley 1985, NASA TM-86309).
 
 ---
 
-## Installation
-
-### Requirements
-
-- Python 3.10+
-- CUDA 12.x and a compatible NVIDIA GPU
-
-### Setup
-
-```bash
-git clone <repo-url>
-cd stall-spin
-python -m venv .venv
-source .venv/bin/activate
-```
-
-Install Python dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-Install CuPy matching your CUDA version (the solver runs entirely on GPU):
-
-```bash
-# CUDA 12.x
-pip install cupy-cuda12x
-
-# CUDA 11.x
-pip install cupy-cuda11x
-```
-
 ### Running
 
 Train the policy (or load from cache if `results/SymmetricStall_policy.npz` exists) and generate all figures:
