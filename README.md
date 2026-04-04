@@ -99,7 +99,7 @@ where the non-dimensional pitch rate is $\hat{q} = q\bar{c}/(2V)$.
 The thrust coefficient $C_T$ is computed from the throttle command $\delta_t$ and the
 current airspeed $V$:
 
-$$C_T = \min\!\left(0.5,\;\max\!\left(0,\;\frac{K_t\,\delta_t}{\frac{1}{2}\rho V^2 S}\right)\right)$$
+$$C_T = \min\left(0.5,\ \max\left(0,\ \frac{K_t\ \delta_t}{\frac{1}{2}\rho V^2 S}\right)\right)$$
 
 where $K_t$ is calibrated so that full throttle ($\delta_t = 1$) produces level flight at
 twice the stall speed ($V = 2V_s$).
