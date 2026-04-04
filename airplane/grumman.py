@@ -2,22 +2,22 @@ import numpy as np
 
 
 class Grumman:
-    ####################################
-    ### Grumman American AA-1 Yankee ###
-    ####################################
+    # ##################################
+    # ## Grumman American AA-1 Yankee ##
+    # ##################################
     """Base class for airplane parameters."""
 
     def __init__(self):
-        ######################
-        ### Sim parameters ###
-        ######################
+        # ####################
+        # ## Sim parameters ##
+        # ####################
         self.TIME_STEP = 0.01
         self.GRAVITY = 9.81
         self.AIR_DENSITY = 1.225  # Density (ρ) [kg/m3]
 
-        ###########################
-        ### Airplane parameters ###
-        ###########################
+        # #########################
+        # ## Airplane parameters ##
+        # #########################
         # Aerodynamic model: CL coefficients (linear approximation, kept for reference)
         self.CL_0 = 0.41
         self.CL_ALPHA = 4.6983
@@ -28,27 +28,29 @@ class Grumman:
         _alpha_deg = np.array([-10., -5.,  0.,  5., 10., 12., 14., 16., 18., 20., 25., 30., 35., 40.])
         self._CL_O_ALPHA_RAD = np.deg2rad(_alpha_deg)
         # CL_o: linear up to ~12°, flat-top 14°–18°, gradual post-stall drop
-        self._CL_O_TABLE = np.array([-0.41, -0.01, 0.41, 0.84, 1.16, 1.23, 1.26, 1.26, 1.26, 1.25, 1.22, 1.17, 1.13, 1.08])
+        self._CL_O_TABLE = np.array(
+            [-0.41, -0.01, 0.41, 0.84, 1.16, 1.23, 1.26, 1.26, 1.26, 1.25, 1.22, 1.17, 1.13, 1.08])
         # CL_q: pitch-rate damping derivative — nearly 2x larger at stall angles than at cruise
-        self._CL_Q_TABLE  = np.array([ 2.41,  2.41, 2.42, 2.46, 2.59, 2.96, 3.72, 4.73, 5.29, 5.16, 5.05, 5.06, 5.98, 5.08])
-        
+        self._CL_Q_TABLE = np.array(
+            [2.41, 2.41, 2.42, 2.46, 2.59, 2.96, 3.72, 4.73, 5.29, 5.16, 5.05, 5.06, 5.98, 5.08])
+
         # Aerodynamic model: CD_o nonlinear table — Riley (1985) Table III(b), CT=0 (power-off)
         # Same 14 breakpoints as CL_o (-10 deg to 40 deg)
         self._CD_O_TABLE = np.array([0.0666, 0.0486, 0.0526, 0.0846, 0.1456,
                                      0.1856, 0.2446, 0.3136, 0.3786, 0.4486,
                                      0.6186, 0.7786, 0.9255, 1.0636])
-        
+
         # Aerodynamic model: Cm coefficients
         # CM_o nonlinear table — Riley (1985) Table III(c), CT=0 (power-off)
         # Same 14 breakpoints as CL_o (-10 deg to 40 deg)
-        self._CM_O_TABLE = np.array([ 0.2700,  0.1580,  0.0760,  0.0020, -0.0800,
-                                      -0.1180, -0.1670, -0.2250, -0.2770, -0.3160,
-                                      -0.4080, -0.4800, -0.5560, -0.6060])
+        self._CM_O_TABLE = np.array([0.2700, 0.1580, 0.0760, 0.0020, -0.0800,
+                                     -0.1180, -0.1670, -0.2250, -0.2770, -0.3160,
+                                     -0.4080, -0.4800, -0.5560, -0.6060])
         self.CM_ELEVATOR = -1.0313
         # CM_q nonlinear table — Riley (1985) Table III(c), CT=0 (power-off)
         # Same 14 breakpoints as CL_o (-10 deg to 40 deg)
-        self._CM_Q_TABLE = np.array([ -7.0000,  -7.0000,  -7.0400,  -7.1500,  -7.5200,
-                                      -8.6200, -10.8000, -13.7300, -15.3800, -15.0000,
+        self._CM_Q_TABLE = np.array([-7.0000, -7.0000, -7.0400, -7.1500, -7.5200,
+                                     -8.6200, -10.8000, -13.7300, -15.3800, -15.0000,
                                      -14.6600, -14.7100, -14.7700, -14.7700])
 
         # CT breakpoints
@@ -63,10 +65,10 @@ class Grumman:
             dtype=np.float32)
         self._CD_O_TABLE_CT05 = np.array(
             [-0.3273, -0.3499, -0.3474, -0.3139, -0.2483, -0.2057, -0.1435, -0.0709, -0.0018,
-              0.0727,  0.2561,  0.4322,  0.5979,  0.7572],
+             0.0727, 0.2561, 0.4322, 0.5979, 0.7572],
             dtype=np.float32)
         self._CM_O_TABLE_CT05 = np.array(
-            [ 0.27,  0.158, 0.076, 0.002, -0.08, -0.118, -0.167, -0.225,
+            [0.27, 0.158, 0.076, 0.002, -0.08, -0.118, -0.167, -0.225,
              -0.277, -0.316, -0.408, -0.48, -0.556, -0.606],
             dtype=np.float32)
         self._CM_Q_TABLE_CT05 = np.array(
@@ -91,14 +93,14 @@ class Grumman:
             [-0.0374, -0.0393, -0.0394, -0.0395, -0.0384, -0.0360, -0.0334, -0.0311,
              -0.0288, -0.0269, -0.0226, -0.0213, -0.0190, -0.0153],
             dtype=np.float32) * 57.2958
-        
+
         # Aerodynamic model: Cl coefficients
         self.Cl_BETA = -0.1089
         self.Cl_PHAT = -0.52
         self.Cl_RHAT = 0.19
         self.Cl_AILERON = -0.1031
         self.Cl_RUDDER = 0.0143
-        
+
         # Physical model
         self.MASS = 715.21  # Mass (m) [kg] — Riley Table I: 1577 lb × 0.453592
         self.WING_SURFACE_AREA = 9.1147  # Wing surface area (S) [m2]
@@ -106,7 +108,7 @@ class Grumman:
         self.WING_SPAN = 7.46  # Wing Span (b) [m]
         self.I_XX = 808.06   # Inertia [Kg.m^2]
         self.I_YY = 1000.60  # Inertia [Kg.m^2] — Riley Table I: 738 slug·ft² × 1.35582
-        
+
         self.ALPHA_STALL = np.deg2rad(14)  # Stall angle of attack (αs) [rad] — flat-top onset per Riley Table III
 
         # Negative stall angle of attack (αs) [rad]
@@ -114,13 +116,13 @@ class Grumman:
 
         self.CL_STALL = 1.26   # Max CL from Riley Table III (flat-top 14°–18°, CT=0)
         self.CL_REF = self.CL_STALL
-        
+
         # Stall air speed (Vs) [m/s]
         self.STALL_AIRSPEED = np.sqrt(
-            (self.MASS * self.GRAVITY) / 
+            (self.MASS * self.GRAVITY) /
             (0.5 * self.AIR_DENSITY * self.WING_SURFACE_AREA * self.CL_REF)
         )
-        
+
         # Maximum air speed (Vs) [m/s]
         self.MAX_CRUISE_AIRSPEED = 2 * self.STALL_AIRSPEED
 
@@ -131,7 +133,7 @@ class Grumman:
     def _update_state_from_derivative(self, value_to_update, value_derivative):
         value_to_update += self.TIME_STEP * value_derivative
         return value_to_update
-    
+
     def _rk4_update(self, value_to_update: np.ndarray, f, dt: float) -> np.ndarray:
         """
         Perform a Runge-Kutta 4th-order integration step.
@@ -171,19 +173,19 @@ class Grumman:
             c_lift = self.CL_0 + self.CL_ALPHA * self.ALPHA_STALL
             # Stall model: Lift reduction with opposite slope
             # c_lift = (
-            #     -self.CL_ALPHA * alpha 
-            #     + self.CL_0 
+            #     -self.CL_ALPHA * alpha
+            #     + self.CL_0
             #     + 2 * self.CL_ALPHA * self.ALPHA_STALL
             # )
         else:
             c_lift = (
-                self.CL_0 
-                + self.CL_ALPHA * alpha 
-                + self.CL_ELEVATOR * elevator 
+                self.CL_0
+                + self.CL_ALPHA * alpha
+                + self.CL_ELEVATOR * elevator
                 + self.CL_QHAT * q_hat
             )
         return c_lift
-    
+
     def _compute_ct(self, throttle: float, airspeed: float) -> float:
         vt = max(float(airspeed), 0.1)
         q_bar = 0.5 * self.AIR_DENSITY * vt * vt
@@ -192,8 +194,8 @@ class Grumman:
 
     def _bilinear_interp(self, alpha, ct, table_ct0, table_ct05):
         t_ct = np.clip(ct / 0.5, 0.0, 1.0)
-        v0   = np.interp(alpha, self._CL_O_ALPHA_RAD, table_ct0)
-        v05  = np.interp(alpha, self._CL_O_ALPHA_RAD, table_ct05)
+        v0 = np.interp(alpha, self._CL_O_ALPHA_RAD, table_ct0)
+        v05 = np.interp(alpha, self._CL_O_ALPHA_RAD, table_ct05)
         return v0 + t_ct * (v05 - v0)
 
     def _cl_from_alpha(self, alpha, elevator, q_hat, ct=0.0):
@@ -211,14 +213,14 @@ class Grumman:
             np.asarray(q_hat, dtype=np.float32),
         )
 
-        cl_o  = self._bilinear_interp(alpha, ct, self._CL_O_TABLE,       self._CL_O_TABLE_CT05)
-        cl_q  = self._bilinear_interp(alpha, ct, self._CL_Q_TABLE,       self._CL_Q_TABLE_CT05)
-        cl_de = self._bilinear_interp(alpha, ct, self._CL_DE_TABLE_CT0,  self._CL_DE_TABLE_CT05)
+        cl_o = self._bilinear_interp(alpha, ct, self._CL_O_TABLE, self._CL_O_TABLE_CT05)
+        cl_q = self._bilinear_interp(alpha, ct, self._CL_Q_TABLE, self._CL_Q_TABLE_CT05)
+        cl_de = self._bilinear_interp(alpha, ct, self._CL_DE_TABLE_CT0, self._CL_DE_TABLE_CT05)
         return cl_o + cl_de * elevator + cl_q * q_hat
 
     def _lift_force_at_speed_and_cl(self, airspeed, lift_coefficient):
         return (
-            0.5 * self.AIR_DENSITY * self.WING_SURFACE_AREA 
+            0.5 * self.AIR_DENSITY * self.WING_SURFACE_AREA
             * airspeed ** 2 * lift_coefficient
         )
 
@@ -231,7 +233,7 @@ class Grumman:
 
     def _drag_force_at_speed_and_cd(self, airspeed, drag_coefficient):
         return (
-            0.5 * self.AIR_DENSITY * self.WING_SURFACE_AREA 
+            0.5 * self.AIR_DENSITY * self.WING_SURFACE_AREA
             * airspeed ** 2 * drag_coefficient
         )
 
@@ -245,29 +247,29 @@ class Grumman:
 
     def _rolling_moment_coefficient(self, beta, p_hat, r_hat, aileron, rudder):
         c_rolling_moment = (
-            self.Cl_BETA * beta 
-            + self.Cl_PHAT * p_hat 
-            + self.Cl_RHAT * r_hat 
-            + self.Cl_AILERON * aileron 
+            self.Cl_BETA * beta
+            + self.Cl_PHAT * p_hat
+            + self.Cl_RHAT * r_hat
+            + self.Cl_AILERON * aileron
             + self.Cl_RUDDER * rudder
         )
         return c_rolling_moment
 
     def _rolling_moment_at_speed_and_cl(self, airspeed, rolling_moment_coefficient):
         return (
-            0.5 * self.AIR_DENSITY * self.WING_SURFACE_AREA 
+            0.5 * self.AIR_DENSITY * self.WING_SURFACE_AREA
             * self.WING_SPAN * airspeed ** 2 * rolling_moment_coefficient
         )
 
     def _pitching_moment_coefficient(self, alpha, elevator, q_hat, ct=0.0):
-        cm_o  = self._bilinear_interp(alpha, ct, self._CM_O_TABLE,      self._CM_O_TABLE_CT05)
-        cm_q  = self._bilinear_interp(alpha, ct, self._CM_Q_TABLE,      self._CM_Q_TABLE_CT05)
+        cm_o = self._bilinear_interp(alpha, ct, self._CM_O_TABLE, self._CM_O_TABLE_CT05)
+        cm_q = self._bilinear_interp(alpha, ct, self._CM_Q_TABLE, self._CM_Q_TABLE_CT05)
         cm_de = self._bilinear_interp(alpha, ct, self._CM_DE_TABLE_CT0, self._CM_DE_TABLE_CT05)
         return cm_o + cm_de * elevator + cm_q * q_hat
 
     def _pitching_moment_at_speed_and_cm(self, airspeed, pitching_moment_coefficient):
         return (
-            0.5 * self.AIR_DENSITY * self.WING_SURFACE_AREA 
+            0.5 * self.AIR_DENSITY * self.WING_SURFACE_AREA
             * self.CHORD * airspeed ** 2 * pitching_moment_coefficient
         )
 

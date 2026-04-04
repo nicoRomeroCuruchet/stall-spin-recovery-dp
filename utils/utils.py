@@ -96,7 +96,6 @@ def evaluate_policy_step(
             new_val[s] = v_s
 
 
-
 def get_optimal_action(
     state: np.ndarray,
     optimal_policy: any,

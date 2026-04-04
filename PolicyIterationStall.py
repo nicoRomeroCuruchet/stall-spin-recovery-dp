@@ -1,4 +1,3 @@
-import pickle
 from dataclasses import dataclass, field
 from itertools import product
 from pathlib import Path
@@ -52,12 +51,12 @@ class PolicyIterationStallConfig:
 class PolicyIterationStall:
     """
     High-performance Procedural Policy Iteration for 4-DOF Symmetric Stall Recovery.
-    
-    State space: (γ, V/Vs, α, q) — flight path angle, normalized airspeed, 
+
+    State space: (γ, V/Vs, α, q) — flight path angle, normalized airspeed,
                                      angle of attack, pitch rate.
     Action space: (δe, δt) — elevator deflection, throttle.
 
-    Embeds the full Grumman AA-1 Yankee aerodynamic model (CL, CD, Cm with stall 
+    Embeds the full Grumman AA-1 Yankee aerodynamic model (CL, CD, Cm with stall
     saturation) and 4D Barycentric interpolation directly into CUDA C++ kernels.
     """
 
@@ -125,7 +124,7 @@ class PolicyIterationStall:
 
         # 1D Policy mapping state indices to the best action index
         self.d_policy = cp.zeros(self.n_states, dtype=cp.int32)
-        
+
         self.d_value_function = cp.zeros(self.n_states, dtype=cp.float32)
         self.d_new_value_function = cp.zeros(self.n_states, dtype=cp.float32)
 
@@ -139,7 +138,7 @@ class PolicyIterationStall:
             self.d_value_function[self.d_terminal_mask] = cp.asarray(
                 terminal_rewards[terminal_mask], dtype=cp.float32
             )
-        
+
         self.d_new_value_function[:] = self.d_value_function[:]
 
         # Compile the RawModule
@@ -421,7 +420,7 @@ class PolicyIterationStall:
                 total_reward += dt_micro * vn * v_stall * sinf(gamma);
 
                 if (gamma >= 0.0f) { break; }
-                
+
                 // 2. Pitch Damping Penalty
                 total_reward -= W_Q_PENALTY * (q * q) * dt_micro;
 
@@ -434,11 +433,11 @@ class PolicyIterationStall:
                 }
 
                 if (alpha >= 0.698132f || alpha <= -0.698132f || gamma <= -3.09159f) {
-                    total_reward -= W_CRASH_PENALTY * v_stall; 
+                    total_reward -= W_CRASH_PENALTY * v_stall;
                     break;
                 }
             }
-            
+
             // 4. Control Effort Penalty
             total_reward -= W_CONTROL_EFFORT * (de * de) * (dt_micro * n_micro);
             total_reward += W_THROTTLE_BONUS * throttle * fmaxf(1.0f - vn, 0.0f) * (dt_micro * n_micro);
@@ -460,7 +459,7 @@ class PolicyIterationStall:
             n3 = fmaxf(0.0f, fminf(n3, (float)(g_shape[3] - 1)));
 
             int i0 = (int)n0; int i1 = (int)n1; int i2 = (int)n2; int i3 = (int)n3;
-            
+
             if (i0 == g_shape[0] - 1) i0--;
             if (i1 == g_shape[1] - 1) i1--;
             if (i2 == g_shape[2] - 1) i2--;
@@ -480,7 +479,10 @@ class PolicyIterationStall:
                             int corner = a * 8 + b * 4 + c * 2 + d;
                             idxs[corner] = (i0 + a) * strides[0] + (i1 + b) * strides[1]
                                          + (i2 + c) * strides[2] + (i3 + d) * strides[3];
-                            wgts[corner] = (a ? d0 : (1.0f - d0)) * (b ? d1 : (1.0f - d1)) * (c ? d2 : (1.0f - d2)) * (d ? d3 : (1.0f - d3));
+                            wgts[corner] = (a ? d0 : (1.0f - d0))
+                                         * (b ? d1 : (1.0f - d1))
+                                         * (c ? d2 : (1.0f - d2))
+                                         * (d ? d3 : (1.0f - d3));
                         }
                     }
                 }
@@ -502,7 +504,7 @@ class PolicyIterationStall:
             float alpha = states[s_idx * 4 + 2], q = states[s_idx * 4 + 3];
             float de = actions[a_idx * 2 + 0], throttle = actions[a_idx * 2 + 1];
             float reward;
-            
+
             rk4_step_4dof(gamma, vn, alpha, q, de, throttle, dt, 1, v_stall, k_thrust, reward);
 
             int idxs[16]; float wgts[16];
@@ -532,7 +534,7 @@ class PolicyIterationStall:
             for (int a = 0; a < n_actions; ++a) {
                 float gamma = init_gamma, vn = init_vn, alpha = init_alpha, q = init_q;
                 float de = actions[a * 2 + 0], throttle = actions[a * 2 + 1], reward;
-                
+
                 rk4_step_4dof(gamma, vn, alpha, q, de, throttle, dt, 1, v_stall, k_thrust, reward);
 
                 int idxs[16]; float wgts[16];
@@ -558,13 +560,13 @@ class PolicyIterationStall:
         self.improve_kernel = module.get_function('policy_improve_kernel')
         self.threads_per_block = 256
         self.blocks_per_grid = (self.n_states + self.threads_per_block - 1) // self.threads_per_block
-    
+
     def _pull_tensors_from_gpu(self) -> None:
         """
         Retrieves converged policy to CPU RAM using zero-copy transfers.
         """
         logger.info("Retrieving converged matrices from VRAM to CPU RAM...")
-        
+
         gpu_tensors_to_free = [
             'd_new_value_function', 'd_terminal_mask',
             'd_states', 'd_actions',
@@ -574,10 +576,10 @@ class PolicyIterationStall:
         for attr in gpu_tensors_to_free:
             if hasattr(self, attr):
                 delattr(self, attr)
-        
+
         cp.get_default_memory_pool().free_all_blocks()
         logger.info("Released unused GPU tensors and freed VRAM pool.")
-        
+
         self.value_function = np.empty(self.n_states, dtype=np.float32)
         self.policy = np.empty(self.n_states, dtype=np.int32)
 
@@ -586,16 +588,16 @@ class PolicyIterationStall:
             end = min(i + chunk_size, self.n_states)
             self.d_value_function[i:end].get(out=self.value_function[i:end])
             self.d_policy[i:end].get(out=self.policy[i:end])
-        
+
         del self.d_value_function, self.d_policy
         cp.get_default_memory_pool().free_all_blocks()
-        
+
         logger.success("Matrices successfully pulled to Host RAM. All VRAM released.")
 
     def policy_evaluation(self) -> float:
         """Executes purely procedural evaluation on GPU."""
         delta = float("inf")
-        SYNC_INTERVAL = 25 
+        SYNC_INTERVAL = 25
 
         for i in range(self.config.maximum_iterations):
             self.eval_kernel(
@@ -608,12 +610,12 @@ class PolicyIterationStall:
                     np.float32(self.dt), np.float32(self.v_stall), np.float32(self.k_thrust)
                 )
             )
-            
+
             d_delta = max_abs_diff_kernel(self.d_new_value_function, self.d_value_function)
             self.d_value_function, self.d_new_value_function = self.d_new_value_function, self.d_value_function
-            
+
             if i % SYNC_INTERVAL == 0 or i == self.config.maximum_iterations - 1:
-                delta = float(d_delta.get()) 
+                delta = float(d_delta.get())
                 if delta < self.config.theta:
                     logger.success(f"GPU Evaluation converged at step {i} with Δ={delta:.5e}")
                     return delta
@@ -625,33 +627,36 @@ class PolicyIterationStall:
     def policy_improvement(self) -> bool:
         """Executes procedural policy greedy improvement on GPU."""
         d_policy_changes = cp.zeros(1, dtype=cp.int32)
-        
+
         self.improve_kernel(
             (self.blocks_per_grid,), (self.threads_per_block,),
             (
                 self.d_states, self.d_actions, self.d_policy,
                 self.d_value_function, self.d_terminal_mask,
                 self.d_bounds_low, self.d_bounds_high, self.d_grid_shape, self.d_strides,
-                np.int32(self.n_states), np.int32(self.n_actions), 
-                np.float32(self.config.gamma), np.float32(self.env.airplane.TIME_STEP), 
-                np.float32(self.env.airplane.STALL_AIRSPEED), 
+                np.int32(self.n_states), np.int32(self.n_actions),
+                np.float32(self.config.gamma), np.float32(self.env.airplane.TIME_STEP),
+                np.float32(self.env.airplane.STALL_AIRSPEED),
                 np.float32(self.env.airplane.THROTTLE_LINEAR_MAPPING),
                 d_policy_changes
             )
         )
-        
+
         changes = int(d_policy_changes.get()[0])
-        
+
         # FIX: Action Chattering Tolerance
-        # En una grilla de 8.2M estados, permitimos que un ~0.01% (aprox 820 estados) 
+        # En una grilla de 8.2M estados, permitimos que un ~0.01% (aprox 820 estados)
         # oscile por ruido de punto flotante entre acciones adyacentes.
-        tolerance_threshold = int(self.n_states * 0.0001) 
-        
+        tolerance_threshold = int(self.n_states * 0.0001)
+
         policy_stable = (changes <= tolerance_threshold)
-        
+
         if not policy_stable:
-            logger.info(f"GPU Policy updated: {changes} states changed optimal action. (Tolerance: {tolerance_threshold})")
-            
+            logger.info(
+                f"GPU Policy updated: {changes} states changed optimal action. "
+                f"(Tolerance: {tolerance_threshold})"
+            )
+
         return policy_stable
 
     def run(self) -> None:
@@ -664,7 +669,7 @@ class PolicyIterationStall:
             if is_stable:
                 logger.success(f"Algorithm converged optimally at iteration {n + 1}.")
                 break
-                
+
         self._pull_tensors_from_gpu()
         self.save()
 
@@ -672,11 +677,11 @@ class PolicyIterationStall:
         """Serialize and save the trained model to disk."""
         if filepath is None:
             filepath = Path.cwd() / f"{self.env.unwrapped.__class__.__name__}_policy.npz"
-        
+
         filepath = filepath.with_suffix(".npz")
 
         logger.info(f"Serializing policy to {filepath.resolve()}...")
-        
+
         np.savez(
             filepath,
             value_function=self.value_function,
@@ -695,14 +700,14 @@ class PolicyIterationStall:
     def load(cls, filepath: Path, env: gym.Env = None) -> "PolicyIterationStall":
         """Load a saved policy instance from a serialized .npz archive."""
         filepath = filepath.with_suffix(".npz")
-        
+
         logger.info(f"Loading policy from {filepath.resolve()}...")
         data = np.load(filepath)
 
         instance = cls.__new__(cls)
         instance.env = env
         instance.config = PolicyIterationStallConfig()
-        
+
         instance.value_function = data["value_function"]
         instance.policy = data["policy"]
         instance.bounds_low = data["bounds_low"]
@@ -711,11 +716,11 @@ class PolicyIterationStall:
         instance.strides = data["strides"]
         instance.corner_bits = data["corner_bits"]
         instance.action_space = data["action_space"]
-        
+
         instance.n_actions = len(instance.action_space)
         instance.n_dims = len(instance.bounds_low)
-        
-        instance.states_space = None 
-        
+
+        instance.states_space = None
+
         logger.success(f"Policy loaded successfully from {filepath.resolve()}")
         return instance

@@ -1,5 +1,4 @@
 import numpy as np
-import gymnasium as gym
 from gymnasium import spaces
 
 from airplane.symmetric_full_grumman import SymmetricFullGrumman
@@ -15,32 +14,32 @@ class SymmetricStall(AirplaneEnv):
         self.airplane = SymmetricFullGrumman()
         super().__init__(self.airplane)
         self.action_space = spaces.Box(
-            np.array([np.deg2rad(-25), 0.0], np.float32), 
-            np.array([np.deg2rad(15),  1.0], np.float32), 
+            np.array([np.deg2rad(-25), 0.0], np.float32),
+            np.array([np.deg2rad(15),  1.0], np.float32),
             shape=(2,), dtype=np.float32
-        )  
+        )
 
     def _get_obs(self):
         """Standard 1D observation array for Gym compliance."""
         return np.array([
-            self.airplane.flight_path_angle, 
+            self.airplane.flight_path_angle,
             self.airplane.airspeed_norm,
             self.airplane.alpha,
             self.airplane.pitch_rate
         ], dtype=np.float32)
-        
-    def _get_info(self): 
+
+    def _get_info(self):
         return {}
 
     def reset(self, seed=None, options=None):
         min_spawn_state = [-1.5, 0.9, np.deg2rad(14), -0.2]
         max_spawn_state = [-0.1, 2.0, np.deg2rad(20), 0.2]
-        
+
         flight_path_angle, airspeed_norm, alpha, pitch_rate = np.random.uniform(
             min_spawn_state, max_spawn_state
         )
         self.airplane.reset(flight_path_angle, airspeed_norm, alpha, pitch_rate)
-        
+
         return self._get_obs(), self._get_info()
 
     def specific_reset(self, flight_path_angle, airspeed_norm, alpha, pitch_rate):
@@ -50,7 +49,7 @@ class SymmetricStall(AirplaneEnv):
 
     def step(self, action: list):
         """
-        Pure step function: No history, no hidden filters. 
+        Pure step function: No history, no hidden filters.
         Strict compliance with the Markov property.
         """
         elevator = action[0]
@@ -63,18 +62,18 @@ class SymmetricStall(AirplaneEnv):
         fpa = self.airplane.flight_path_angle
         v_norm = self.airplane.airspeed_norm
         alpha = self.airplane.alpha
-        
+
         # 3. Base Physical Reward: True physical height loss in meters
         reward = (self.airplane.TIME_STEP * v_norm * np.sin(fpa) * self.airplane.STALL_AIRSPEED)
-        
+
         # 4. Evaluate specific terminal conditions
-        fpa_success = (fpa >= 0.0) 
-        
+        fpa_success = (fpa >= 0.0)
+
         alpha_crash = (alpha >= np.deg2rad(40)) or (alpha <= np.deg2rad(-40))
-        fpa_crash   = (fpa <= -np.pi + 0.05)
+        fpa_crash = (fpa <= -np.pi + 0.05)
 
         failure = fpa_crash or alpha_crash
-        terminated = fpa_success or failure        
+        terminated = fpa_success or failure
 
         # Apply catastrophic penalty only if boundaries are violated
         if failure:
@@ -87,19 +86,19 @@ class SymmetricStall(AirplaneEnv):
         Vectorized terminal check exclusively for GPU Policy Iteration initialization.
         Expects a 2D array of states (N, 4).
         """
-        fpa   = np.asarray(states[:, 0])   
-        alpha = np.asarray(states[:, 2])               
+        fpa = np.asarray(states[:, 0])
+        alpha = np.asarray(states[:, 2])
 
-        fpa_success = (fpa >= 0.0) 
-        
+        fpa_success = (fpa >= 0.0)
+
         alpha_crash = (alpha >= np.deg2rad(40)) | (alpha <= np.deg2rad(-40))
-        fpa_crash   = (fpa <= -np.pi + 0.05)
+        fpa_crash = (fpa <= -np.pi + 0.05)
 
         failure = fpa_crash | alpha_crash
-        terminate = fpa_success | failure        
+        terminate = fpa_success | failure
 
         rewards = np.zeros_like(fpa)
-        
+
         # FIX: Align GPU initialization penalty with the step function
         rewards[failure] = -1000.0 * self.airplane.STALL_AIRSPEED
 

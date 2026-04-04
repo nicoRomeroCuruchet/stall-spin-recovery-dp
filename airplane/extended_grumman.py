@@ -2,29 +2,29 @@ from airplane.grumman import Grumman
 
 
 class ExtendedGrumman(Grumman):
-    ####################################
-    ### Grumman American AA-1 Yankee ###
-    ####################################
+    # ##################################
+    # ## Grumman American AA-1 Yankee ##
+    # ##################################
     """Class for complete airplane state and dynamics."""
 
     def __init__(self):
         super().__init__()
-        ##########################
-        ### Airplane variables ###
-        ##########################
+        # ########################
+        # ## Airplane variables ##
+        # ########################
         self.flight_path_angle = 0.0  # Flight path Angle (γ) [rad]
         self.airspeed = self.STALL_AIRSPEED  # Air Speed (V) [m/s]
         self.airspeed_norm = 1.0  # Air Speed (V/Vs) [1]
         self.alpha = 0.0  # Angle of attack (α) [rad]
-        self.beta = 0.0  
-        self.bank_angle = 0.0  
-        self.roll_rate = 0.0  
+        self.beta = 0.0
+        self.bank_angle = 0.0
+        self.roll_rate = 0.0
         self.pitch_rate = 0.0  # Pitch rate (q) [rad/s]
-        self.yaw_rate = 0.0  
+        self.yaw_rate = 0.0
 
-        #######################
-        ### Airplane forces ###
-        #######################
+        # #####################
+        # ## Airplane forces ##
+        # #####################
         self.lift_force = None
         self.drag_force = None
         self.side_force = None
@@ -46,8 +46,8 @@ class ExtendedGrumman(Grumman):
         self.last_throttle = throttle
         self.last_rudder = rudder
 
-        self.pre_hook(elevator, aileron, throttle, rudder) 
-        
+        self.pre_hook(elevator, aileron, throttle, rudder)
+
         flight_path_angle_dot = self.compute_flight_path_angle_dot()
         airspeed_dot = self.compute_airspeed_dot()
         alpha_dot = self.compute_alpha_dot()
@@ -64,10 +64,10 @@ class ExtendedGrumman(Grumman):
             self.airspeed, airspeed_dot
         )
         self.airspeed_norm = self.airspeed / self.STALL_AIRSPEED
-        
+
         self.alpha = self._update_state_from_derivative(self.alpha, alpha_dot)
         self.beta = self._update_state_from_derivative(self.beta, beta_dot)
-        
+
         self.bank_angle = self._update_state_from_derivative(
             self.bank_angle, bank_angle_dot
         )
@@ -118,14 +118,14 @@ class ExtendedGrumman(Grumman):
         return 0
 
     def reset(
-        self, 
-        flight_path_angle, 
-        airspeed_norm, 
-        alpha, 
-        beta, 
-        bank_angle, 
-        roll_rate, 
-        pitch_rate, 
+        self,
+        flight_path_angle,
+        airspeed_norm,
+        alpha,
+        beta,
+        bank_angle,
+        roll_rate,
+        pitch_rate,
         yaw_rate
     ):
         """Reset the airplane to a specified initial state."""

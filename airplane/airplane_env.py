@@ -13,10 +13,10 @@ class AirplaneEnv(Env):
 
         self.visualiser = None
         self.render_mode = render_mode
-        
+
         if render_mode is not None and render_mode not in self.metadata["render_modes"]:
             raise ValueError(f"Invalid render mode: {render_mode}")
-            
+
         self.window = None
         self.clock = None
         self.np_random = np.random.default_rng()
@@ -46,7 +46,7 @@ class AirplaneEnv(Env):
             # TODO: Add additional observations
             fpa_deg = np.rad2deg(self.airplane.flight_path_angle)
             print(f"\u001b[34m Flight Path Angle (deg): {fpa_deg:.2f}\u001b[37m")
-            
+
             # TODO: Proper stall prediction
             if self.airplane.flight_path_angle > 0.7:
                 print("\u001b[35m -- STALL --\u001b[37m")
