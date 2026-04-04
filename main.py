@@ -13,7 +13,7 @@ import numpy as np
 
 os.environ["NUMBA_THREADING_LAYER"] = "omp"
 
-from airplane.symmetric_stall import SymmetricStall
+from aircraft.symmetric_stall import SymmetricStall
 from PolicyIteration import PolicyIterationStall, PolicyIterationStallConfig
 from utils.utils import get_optimal_action
 
