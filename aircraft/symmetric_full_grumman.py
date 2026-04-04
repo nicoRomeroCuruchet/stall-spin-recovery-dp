@@ -1,6 +1,6 @@
 import numpy as np
 
-from airplane.extended_grumman import ExtendedGrumman
+from aircraft.extended_grumman import ExtendedGrumman
 
 
 class SymmetricFullGrumman(ExtendedGrumman):

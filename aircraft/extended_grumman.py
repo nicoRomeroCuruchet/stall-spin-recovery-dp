@@ -1,4 +1,4 @@
-from airplane.grumman import Grumman
+from aircraft.grumman import Grumman
 
 
 class ExtendedGrumman(Grumman):

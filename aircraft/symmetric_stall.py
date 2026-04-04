@@ -1,8 +1,8 @@
 import numpy as np
 from gymnasium import spaces
 
-from airplane.airplane_env import AirplaneEnv
-from airplane.symmetric_full_grumman import SymmetricFullGrumman
+from aircraft.airplane_env import AirplaneEnv
+from aircraft.symmetric_full_grumman import SymmetricFullGrumman
 
 
 class SymmetricStall(AirplaneEnv):
