@@ -35,7 +35,7 @@ class Grumman:
         # CL_q: pitch-rate damping — nearly 2x larger at stall angles than cruise
         self._CL_Q_TABLE = np.array(
             [2.41, 2.41, 2.42, 2.46, 2.59, 2.96,
-             3.72, 4.73, 5.29, 5.16, 5.05, 5.06, 5.98, 5.08])
+             3.72, 4.73, 5.29, 5.16, 5.05, 5.06, 5.08, 5.08])
 
         # CD_o nonlinear table — Riley (1985) Table III(b), CT=0 (power-off)
         # Same 14 breakpoints as CL_o (-10 deg to 40 deg)
@@ -112,7 +112,7 @@ class Grumman:
         self.MASS = 715.21  # Mass (m) [kg] — Riley Table I: 1577 lb × 0.453592
         self.WING_SURFACE_AREA = 9.1147  # Wing surface area (S) [m2]
         self.CHORD = 1.22  # Chord (c) [m]
-        self.WING_SPAN = 7.46  # Wing Span (b) [m]
+        self.WING_SPAN = 8.066  # Wing Span (b) [m] — Riley Table I: 26.46 ft × 0.3048
         self.I_XX = 808.06   # Inertia [Kg.m^2]
         self.I_YY = 1000.60  # Inertia [Kg.m^2] — Riley Table I: 738 slug·ft² × 1.35582
 

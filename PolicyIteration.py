@@ -211,7 +211,7 @@ class PolicyIterationStall:
         __device__ const float CL_Q_TBL_CT0[14] = {
              2.41f,  2.41f,  2.42f,  2.46f,  2.59f,
              2.96f,  3.72f,  4.73f,  5.29f,  5.16f,
-             5.05f,  5.06f,  5.98f,  5.08f
+             5.05f,  5.06f,  5.08f,  5.08f
         };
 
         // CM_q: pitch damping, CT=0
