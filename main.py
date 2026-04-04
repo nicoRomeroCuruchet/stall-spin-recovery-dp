@@ -229,7 +229,7 @@ def simulate_and_plot_pure_response(pi: PolicyIterationStall, prefix: str) -> No
 
     plt.tight_layout()
 
-    out_path = Path("results") / f"{prefix}_Markovian_DP.png"
+    out_path = Path("results") / f"{prefix}_trajectory.png"
     out_path.parent.mkdir(exist_ok=True)
     plt.savefig(out_path, dpi=300)
     plt.close()
@@ -339,7 +339,7 @@ def generate_paper_heatmap_figures(pi: PolicyIterationStall, prefix: str) -> Non
         label='Altitude Loss (m)', ticks=[0, 100]
     )
 
-    out_path = Path("results") / f"{prefix}_Fig6_Stall_Heatmaps.png"
+    out_path = Path("results") / f"{prefix}_heatmaps.png"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(out_path, dpi=300, bbox_inches='tight')
     plt.close()

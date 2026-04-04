@@ -25,8 +25,8 @@ Output is written to `results/`:
 | File | Description |
 |---|---|
 | `SymmetricStall_policy.npz` | Trained value function and policy |
-| `symmetric_stall_Markovian_DP.png` | Recovery trajectory |
-| `symmetric_stall_Fig6_Stall_Heatmaps.png` | Optimal policy heatmaps |
+| `symmetric_stall_trajectory.png` | Recovery trajectory |
+| `symmetric_stall_heatmaps.png` | Optimal policy heatmaps |
 
 ---
 
@@ -52,26 +52,7 @@ Under these assumptions the full 8-state nonlinear EOM reduce to a 4-state syste
 
 ## Equations of Motion
 
-Full nonlinear EOM in flight path and flow angle representation (Eq. 7, Grillo et al. 2023):
-
-$$\dot{V} = -g \sin\gamma - \frac{(D - T\cos\alpha)\cos\beta - Y\sin\beta}{m} \tag{7a}$$
-
-$$\dot{\gamma} = \frac{L + T\sin\alpha}{mV}\cos\mu - \frac{g}{V}\cos\gamma - \frac{(D - T\cos\alpha)\sin\beta + Y\cos\beta}{mV}\sin\mu \tag{7b}$$
-
-$$\dot{\mu} = (\cos\beta + \tan\beta\sin\beta)(p\cos\alpha + r\sin\alpha) + \left(\sin\mu\tan\gamma + \tan\beta\right)\frac{L + T\sin\alpha}{mV}$$
-$$\quad + \frac{(D - T\cos\alpha)\sin\beta + Y\cos\beta}{mV}\cos\mu\tan\gamma - \frac{g}{V}\cos\gamma\cos\mu\tan\beta \tag{7c}$$
-
-$$\dot{\alpha} = q - \sec\beta\left(\frac{L + T\sin\alpha}{mV} - \frac{g}{V}\cos\gamma\cos\mu\right) - \tan\beta\,(p\cos\alpha + r\sin\alpha) \tag{7d}$$
-
-$$\dot{\beta} = \frac{(D - T\cos\alpha)\sin\beta + Y\cos\beta}{mV} + \frac{g}{V}\cos\gamma\sin\mu - (r\cos\alpha - p\sin\alpha) \tag{7e}$$
-
-$$\dot{p} = \frac{M_x}{I_{xx}} - qr\,\frac{I_{zz} - I_{yy}}{I_{xx}} \tag{7f}$$
-
-$$\dot{q} = \frac{M_y}{I_{yy}} + pr\,\frac{I_{zz} - I_{xx}}{I_{yy}} \tag{7g}$$
-
-$$\dot{r} = \frac{M_z}{I_{zz}} - pq\,\frac{I_{yy} - I_{xx}}{I_{zz}} \tag{7h}$$
-
-Under symmetric flight ($\beta = 0$, $\mu = 0$, $p = r = 0$), these collapse to:
+Full nonlinear EOM in flight path and flow angle representation with symmetric flight assumptions:
 
 $$\dot{V} = -g\sin\gamma - \frac{D - T\cos\alpha}{m}$$
 
@@ -131,7 +112,7 @@ Total: $21 \times 7 = 147$ discrete actions.
 
 ### Optimal Policy (Elevator, Throttle, Altitude Loss)
 
-![Optimal Policy Heatmaps](results/symmetric_stall_Fig6_Stall_Heatmaps.png)
+![Optimal Policy Heatmaps](results/symmetric_stall_heatmaps.png)
 
 Optimal elevator deflection, throttle command and expected altitude loss as a function of
 flight path angle $\gamma$ and angle of attack $\alpha$, for three airspeeds ($V/V_s = 0.9,\,1.0,\,1.1$)
@@ -141,7 +122,7 @@ drops below stall, the policy reverses to pitch-up elevator to complete the pull
 
 ### Stall Recovery Trajectory
 
-<img src="results/symmetric_stall_Markovian_DP.png" width="700"/>
+<img src="results/symmetric_stall_trajectory.png" width="700"/>
 
 Sample recovery from $\gamma = 0°$, $V/V_s = 0.95$, $\alpha = 20°$, $q = 0\,\text{deg/s}$.
 The DP policy commands immediate full nose-down elevator and full throttle, reducing $\alpha$
