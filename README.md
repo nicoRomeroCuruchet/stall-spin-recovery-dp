@@ -43,7 +43,7 @@ Then install the matching wheel:
 | 12.x | `pip install cupy-cuda12x` |
 | 13.x | `pip install cupy-cuda12x` *(use 12x, backward-compatible)* |
 
-Troubleshooting:
+### Troubleshooting:
 
 CuPy does not require the full CUDA toolkit (`nvcc`) — only the NVIDIA driver. If you get a `libnvrtc.so not found` error, install the 
 
