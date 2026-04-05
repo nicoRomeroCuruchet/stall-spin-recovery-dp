@@ -327,7 +327,9 @@ def plot_trajectory(pi: PolicyIteration, prefix: str) -> None:
 # Pipeline
 # -----------------------------------------------------------------------
 
-def run_pipeline(level: int, plots: bool = True, retrain: bool = False) -> None:
+def run_pipeline(
+    level: int, plots: bool = True, retrain: bool = False, validate: bool = False
+) -> None:
     logger.info("=" * 60)
     logger.info(f"  2-DOF Symmetric Pullout with Thrust — Grid Level {level}")
     logger.info("=" * 60)
@@ -342,6 +344,10 @@ def run_pipeline(level: int, plots: bool = True, retrain: bool = False) -> None:
         plot_altitude_loss(pi, prefix)
         plot_policy(pi, prefix)
         plot_trajectory(pi, prefix)
+
+    if validate:
+        from casadi_validation import validate_with_casadi
+        validate_with_casadi(pi, prefix)
 
     env.close()
 
@@ -374,5 +380,14 @@ if __name__ == "__main__":
         "--no-plots", action="store_true",
         help="Skip all plots",
     )
+    parser.add_argument(
+        "--validate", action="store_true",
+        help="Run CasADi NLP validation against the DP policy",
+    )
     args = parser.parse_args()
-    run_pipeline(level=args.level, plots=not args.no_plots, retrain=args.retrain)
+    run_pipeline(
+        level=args.level,
+        plots=not args.no_plots,
+        retrain=args.retrain,
+        validate=args.validate,
+    )
