@@ -1,10 +1,10 @@
 """
 PolicyIteration.py
 ------------------
-GPU-accelerated Policy Iteration for the 2-DOF Symmetric Glider Pullout.
+GPU-accelerated Policy Iteration for the 2-DOF Symmetric Pullout with thrust.
 
 State  : (γ, V/Vs)   — flight-path angle [rad], normalised airspeed [-]
-Action : C_L          — lift coefficient [-]
+Action : (C_L, δ_throttle)  — lift coefficient [-], throttle fraction [0,1]
 Reward : dt * V_norm * sin(γ)   (negative = altitude loss)
 Terminal: γ >= 0 (pulled out) | γ <= -π (catastrophic dive)
 
@@ -55,10 +55,13 @@ class PolicyIterationConfig:
 
 class PolicyIteration:
     """
-    Procedural Policy Iteration — 2-DOF Symmetric Glider Pullout.
+    Procedural Policy Iteration — 2-DOF Symmetric Pullout with Thrust.
 
-    RK4 physics and 2-D bilinear (barycentric) interpolation are embedded
-    directly in CUDA C++ kernels; no lookup table is materialised in VRAM.
+    RK4 physics with thrust term and 2-D bilinear (barycentric) interpolation
+    are embedded directly in CUDA C++ kernels; no lookup table is materialised
+    in VRAM.
+
+    action_space : (n_actions, 2) array of (CL, δ_throttle) pairs.
     """
 
     def __init__(
@@ -73,18 +76,24 @@ class PolicyIteration:
 
         self.env = env
         self.states_space = np.ascontiguousarray(states_space, dtype=np.float32)
+        # action_space: (n_actions, 2)  —  columns: [CL, δ_throttle]
         self.action_space = np.ascontiguousarray(action_space, dtype=np.float32)
         self.config = config
 
         self.n_states, self.n_dims = self.states_space.shape   # n_dims == 2
-        self.n_actions = len(self.action_space)
+        self.n_actions = len(self.action_space)                # n_CL * n_throttle
 
         # Stall speed consistent with grumman.py constants
-        cl_ref = 0.41 + 4.6983 * np.deg2rad(15)               # CL_0 + CLA * alpha_stall
+        cl_ref = 0.41 + 4.6983 * np.deg2rad(15)
         self.v_stall = float(
             np.sqrt(697.18 * 9.81 / (0.5 * 1.225 * 9.1147 * cl_ref))
         )
+        # Throttle mapping: Kt  [N]  — full throttle = drag at Vmax = 2*Vs
+        self.throttle_mapping = float(
+            env.unwrapped.airplane.THROTTLE_LINEAR_MAPPING
+        )
         logger.info(f"V_stall = {self.v_stall:.3f} m/s")
+        logger.info(f"THROTTLE_LINEAR_MAPPING = {self.throttle_mapping:.2f} N")
 
         self._precompute_grid_metadata()
         self._allocate_tensors_and_compile()
@@ -122,7 +131,8 @@ class PolicyIteration:
         logger.info("Allocating VRAM and compiling CUDA kernels …")
 
         self.d_states = cp.asarray(self.states_space, dtype=cp.float32)
-        self.d_actions = cp.asarray(self.action_space, dtype=cp.float32)
+        # actions stored flat: a_idx -> (actions[a_idx*2+0], actions[a_idx*2+1])
+        self.d_actions = cp.asarray(self.action_space.ravel(), dtype=cp.float32)
         self.d_bounds_low = cp.asarray(self.bounds_low, dtype=cp.float32)
         self.d_bounds_high = cp.asarray(self.bounds_high, dtype=cp.float32)
         self.d_grid_shape = cp.asarray(self.grid_shape, dtype=cp.int32)
@@ -152,13 +162,12 @@ class PolicyIteration:
         extern "C" {
 
         // ----------------------------------------------------------------
-        // 2-DOF dynamics: returns d_gamma, d_vn for the Symmetric Glider
-        // (no bank angle, no thrust)
+        // 2-DOF dynamics with thrust: returns d_gamma, d_vn
         // ----------------------------------------------------------------
-        __device__ void get_derivatives_2dof(
-            float gamma, float vn, float cl,
+        __device__ void get_derivatives_2dof_thrust(
+            float gamma, float vn, float cl, float throttle,
             float& d_gamma, float& d_vn,
-            float v_stall
+            float v_stall, float throttle_mapping
         ) {
             const float MASS  = 697.18f;
             const float S     = 9.1147f;
@@ -170,13 +179,17 @@ class PolicyIteration:
             const float CL0   = 0.41f;
             const float CLA   = 4.6983f;
 
-            float v_true = vn * v_stall;
-            float alpha  = (cl - CL0) / CLA;
-            float cd     = CD0 + CDA * alpha + CDA2 * alpha * alpha;
-            float dyn    = 0.5f * RHO * (S / MASS);
+            float v_true  = vn * v_stall;
+            float alpha   = (cl - CL0) / CLA;
+            float cd      = CD0 + CDA * alpha + CDA2 * alpha * alpha;
+            float dyn     = 0.5f * RHO * (S / MASS);
+            float thrust  = throttle_mapping * throttle / MASS;   // a [m/s^2]
 
-            // V_norm_dot = V_dot / v_stall
-            d_vn = (-G * sinf(gamma) - dyn * v_true * v_true * cd) / v_stall;
+            // V_norm_dot = (V_dot) / v_stall
+            d_vn = (-G * sinf(gamma)
+                    - dyn * v_true * v_true * cd
+                    + thrust) / v_stall;
+
             // gamma_dot  (mu = 0, cos(mu) = 1)
             float v_safe = fmaxf(v_true, 0.1f);
             d_gamma = dyn * v_true * cl - (G / v_safe) * cosf(gamma);
@@ -185,22 +198,20 @@ class PolicyIteration:
         // ----------------------------------------------------------------
         // RK4 integrator - 2 states, returns step reward
         // ----------------------------------------------------------------
-        __device__ void rk4_step_2dof(
-            float& gamma, float& vn, float cl,
-            float dt, float v_stall, float& reward
+        __device__ void rk4_step_2dof_thrust(
+            float& gamma, float& vn, float cl, float throttle,
+            float dt, float v_stall, float throttle_mapping, float& reward
         ) {
             float k1g, k1v, k2g, k2v, k3g, k3v, k4g, k4v;
 
-            get_derivatives_2dof(gamma,              vn,              cl, k1g, k1v, v_stall);
-            get_derivatives_2dof(gamma+0.5f*dt*k1g, vn+0.5f*dt*k1v, cl, k2g, k2v, v_stall);
-            get_derivatives_2dof(gamma+0.5f*dt*k2g, vn+0.5f*dt*k2v, cl, k3g, k3v, v_stall);
-            get_derivatives_2dof(gamma+     dt*k3g, vn+     dt*k3v, cl, k4g, k4v, v_stall);
+            get_derivatives_2dof_thrust(gamma,              vn,              cl, throttle, k1g, k1v, v_stall, throttle_mapping);
+            get_derivatives_2dof_thrust(gamma+0.5f*dt*k1g, vn+0.5f*dt*k1v, cl, throttle, k2g, k2v, v_stall, throttle_mapping);
+            get_derivatives_2dof_thrust(gamma+0.5f*dt*k2g, vn+0.5f*dt*k2v, cl, throttle, k3g, k3v, v_stall, throttle_mapping);
+            get_derivatives_2dof_thrust(gamma+     dt*k3g, vn+     dt*k3v, cl, throttle, k4g, k4v, v_stall, throttle_mapping);
 
             gamma += (dt / 6.0f) * (k1g + 2.0f*k2g + 2.0f*k3g + k4g);
             vn    += (dt / 6.0f) * (k1v + 2.0f*k2v + 2.0f*k3v + k4v);
 
-            // reward = dt * V_norm * sin(gamma)   (before the RK4 step)
-            // use mid-point gamma for a slightly better estimate
             float gamma_mid = gamma - (dt / 6.0f) * (k1g + 2.0f*k2g + 2.0f*k3g + k4g) * 0.5f;
             float vn_mid    = vn    - (dt / 6.0f) * (k1v + 2.0f*k2v + 2.0f*k3v + k4v) * 0.5f;
             reward = dt * vn_mid * sinf(gamma_mid);
@@ -241,13 +252,15 @@ class PolicyIteration:
 
         // ----------------------------------------------------------------
         // Policy evaluation kernel
+        // actions layout: [cl_0, th_0, cl_1, th_1, ...] (stride-2 pairs)
         // ----------------------------------------------------------------
         __global__ void policy_eval_kernel(
             const float* states, const float* actions, const int* policy,
             const float* V, float* new_V, const bool* is_term,
             const float* b_low, const float* b_high,
             const int* g_shape, const int* strides,
-            int n_states, float gamma_discount, float dt, float v_stall
+            int n_states, float gamma_discount, float dt,
+            float v_stall, float throttle_mapping
         ) {
             int s_idx = blockIdx.x * blockDim.x + threadIdx.x;
             if (s_idx >= n_states) return;
@@ -257,13 +270,14 @@ class PolicyIteration:
                 return;
             }
 
-            int a_idx  = policy[s_idx];
-            float gamma = states[s_idx * 2 + 0];
-            float vn    = states[s_idx * 2 + 1];
-            float cl    = actions[a_idx];
+            int a_idx    = policy[s_idx];
+            float gamma  = states[s_idx * 2 + 0];
+            float vn     = states[s_idx * 2 + 1];
+            float cl     = actions[a_idx * 2 + 0];
+            float throttle = actions[a_idx * 2 + 1];
 
             float reward;
-            rk4_step_2dof(gamma, vn, cl, dt, v_stall, reward);
+            rk4_step_2dof_thrust(gamma, vn, cl, throttle, dt, v_stall, throttle_mapping, reward);
 
             int   idxs[4];
             float wgts[4];
@@ -284,7 +298,8 @@ class PolicyIteration:
             const float* V, const bool* is_term,
             const float* b_low, const float* b_high,
             const int* g_shape, const int* strides,
-            int n_states, int n_actions, float gamma_discount, float dt, float v_stall,
+            int n_states, int n_actions, float gamma_discount, float dt,
+            float v_stall, float throttle_mapping,
             int* policy_changes
         ) {
             int s_idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -298,12 +313,13 @@ class PolicyIteration:
             int   best_a = 0;
 
             for (int a = 0; a < n_actions; ++a) {
-                float gamma = init_gamma;
-                float vn    = init_vn;
-                float cl    = actions[a];
+                float gamma    = init_gamma;
+                float vn       = init_vn;
+                float cl       = actions[a * 2 + 0];
+                float throttle = actions[a * 2 + 1];
 
                 float reward;
-                rk4_step_2dof(gamma, vn, cl, dt, v_stall, reward);
+                rk4_step_2dof_thrust(gamma, vn, cl, throttle, dt, v_stall, throttle_mapping, reward);
 
                 int   idxs[4];
                 float wgts[4];
@@ -344,7 +360,7 @@ class PolicyIteration:
     def policy_evaluation(self) -> float:
         delta        = float("inf")
         SYNC_INTERVAL = 25
-        dt           = np.float32(self.env.unwrapped.airplane.TIME_STEP)
+        dt = np.float32(self.env.unwrapped.airplane.TIME_STEP)
 
         for i in range(self.config.maximum_iterations):
             self.eval_kernel(
@@ -359,6 +375,7 @@ class PolicyIteration:
                     np.float32(self.config.gamma),
                     dt,
                     np.float32(self.v_stall),
+                    np.float32(self.throttle_mapping),
                 ),
             )
             d_delta = max_abs_diff_kernel(self.d_new_value_function, self.d_value_function)
@@ -382,7 +399,7 @@ class PolicyIteration:
 
     def policy_improvement(self) -> bool:
         d_changes = cp.zeros(1, dtype=cp.int32)
-        dt        = np.float32(self.env.unwrapped.airplane.TIME_STEP)
+        dt = np.float32(self.env.unwrapped.airplane.TIME_STEP)
 
         self.improve_kernel(
             (self.blocks_per_grid,), (self.threads_per_block,),
@@ -396,6 +413,7 @@ class PolicyIteration:
                 np.float32(self.config.gamma),
                 dt,
                 np.float32(self.v_stall),
+                np.float32(self.throttle_mapping),
                 d_changes,
             ),
         )
@@ -447,7 +465,7 @@ class PolicyIteration:
             bounds_high=self.bounds_high,
             grid_shape=self.grid_shape,
             strides=self.strides,
-            action_space=self.action_space,
+            action_space=self.action_space,   # shape (n_actions, 2)
         )
         logger.success(f"Policy saved → {filepath.resolve()}")
 
@@ -466,7 +484,7 @@ class PolicyIteration:
         inst.bounds_high    = data["bounds_high"]
         inst.grid_shape     = data["grid_shape"]
         inst.strides        = data["strides"]
-        inst.action_space   = data["action_space"]
+        inst.action_space   = data["action_space"]   # (n_actions, 2)
         inst.n_actions      = len(inst.action_space)
         inst.n_dims         = len(inst.bounds_low)
         inst.states_space   = None
