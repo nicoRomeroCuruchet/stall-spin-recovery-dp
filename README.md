@@ -129,7 +129,7 @@ with $\alpha_s = 15°$.
 ![Minimum Altitude Loss Heatmap](results/ReducedSymmetricGliderPullout_L2_heatmaps.png)
 
 Minimum expected altitude loss [m] as a function of initial flight path angle $\gamma$ and
-initial normalized airspeed $V/V_s$, computed with the level-3 grid (~24 k states).
+initial normalized airspeed $V/V_s$, computed with the level-2 grid (~6 k states).
 The optimal policy commands the $C_L$ that minimises total altitude loss from the current state
 to level flight recovery ($\gamma = 0$). Altitude loss grows rapidly for steep dives ($\gamma < -60°$)
 and near-stall speeds ($V/V_s \approx 1$), where the reduced lift margin limits recovery authority.
