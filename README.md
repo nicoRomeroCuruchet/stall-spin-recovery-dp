@@ -9,12 +9,6 @@ transition table methods. Reference aircraft: **Grumman AA-1 Yankee** (Riley 198
 This model extends the symmetric glider formulation by including a throttle control input, enabling the solver
 to jointly optimise lift and thrust during the recovery manoeuvre.
 
-> **Reference paper:**
-> Grillo, C., Torre, F., & Bunge, R. A. (2023).
-> *Optimal Stall Recovery via Deep Reinforcement Learning for a General Aviation Aircraft.*
-> AIAA SciTech Forum, National Harbor, MD.
-> Universidad de San Andrés, Argentina.
-
 ---
 
 ### Running
