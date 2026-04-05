@@ -170,7 +170,7 @@ def plot_altitude_loss(pi: PolicyIteration, prefix: str) -> None:
     )
     fig.colorbar(pcm, ax=ax, fraction=0.025, pad=0.02, shrink=0.85, aspect=40)
 
-    ax.set_xlabel("Initial Relative Airspeed")
+    ax.set_xlabel(r"Initial Airspeed  $V/V_s$")
     ax.set_ylabel("Initial Flight Path Angle (deg)")
     ax.set_title("Minimum altitude loss as a function of initial conditions")
 
