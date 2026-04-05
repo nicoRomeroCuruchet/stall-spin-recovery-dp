@@ -168,7 +168,7 @@ def plot_altitude_loss(pi: PolicyIteration, prefix: str) -> None:
         edgecolors="k" if show_edges else "none",
         linewidth=0.3 if show_edges else 0,
     )
-    fig.colorbar(pcm, ax=ax, fraction=0.025, pad=0.02, shrink=1.0, aspect=40)
+    fig.colorbar(pcm, ax=ax, fraction=0.025, pad=0.02, shrink=0.85, aspect=40)
 
     ax.set_xlabel("Initial Relative Airspeed")
     ax.set_ylabel("Initial Flight Path Angle (deg)")
