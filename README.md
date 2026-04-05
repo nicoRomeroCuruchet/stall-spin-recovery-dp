@@ -126,7 +126,7 @@ with $\alpha_s = 15°$.
 
 ### Minimum Altitude Loss
 
-![Minimum Altitude Loss Heatmap](results/ReducedSymmetricGliderPullout_L3_heatmaps.png)
+![Minimum Altitude Loss Heatmap](results/ReducedSymmetricGliderPullout_L2_heatmaps.png)
 
 Minimum expected altitude loss [m] as a function of initial flight path angle $\gamma$ and
 initial normalized airspeed $V/V_s$, computed with the level-3 grid (~24 k states).
