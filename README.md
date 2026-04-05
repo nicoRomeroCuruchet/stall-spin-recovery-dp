@@ -129,7 +129,7 @@ Total number of actions = $n_{C_L} \times n_{\delta_t}$.
 
 | Parameter | Value |
 |---|---|
-| Discount factor $\gamma$ | $0.99$ |
+| Discount factor $\gamma$ | $1.0$ (undiscounted) |
 | Convergence threshold $\theta$ | $10^{-4}$ |
 | Max evaluation iterations | $20\,000$ |
 | Max PI outer iterations | $100$ |

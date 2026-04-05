@@ -79,7 +79,7 @@ def get_setup_for_level(level: int):
     env = ReducedSymmetricPullout()
     config = PolicyIterationConfig(
         maximum_iterations=20_000,
-        gamma=0.99,
+        gamma=1.0,
         theta=1e-4,
         n_steps=100,
         log=True,
