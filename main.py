@@ -287,7 +287,7 @@ def run_pipeline(level: int, plots: bool = True, retrain: bool = False) -> None:
     env, states, actions, config = get_setup_for_level(level)
     pi = train_or_load(env, states, actions, config, retrain=retrain)
 
-    prefix = f"ReducedSymmetricGliderPullout_L{level}"
+    prefix = "ReducedSymmetricGliderPullout"
 
     if plots:
         RESULTS_DIR.mkdir(parents=True, exist_ok=True)
