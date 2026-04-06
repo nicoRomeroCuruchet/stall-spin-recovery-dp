@@ -6,14 +6,6 @@ via massively parallel Policy Iteration on continuous-state MDPs. Dynamics are i
 4th-order Runge-Kutta entirely within CUDA registers, avoiding the memory-bound limitations of traditional
 transition table methods. Reference aircraft: **Grumman AA-1 Yankee** (Riley 1985, NASA TM-86309).
 
-> **Reference paper:**
-> Grillo, C., Torre, F., & Bunge, R. A. (2023).
-> *Optimal Stall Recovery via Deep Reinforcement Learning for a General Aviation Aircraft.*
-> AIAA SciTech Forum, National Harbor, MD.
-> Universidad de San Andrés, Argentina.
-
----
-
 ### Running
 
 Train the policy (or load from cache if `results/ReducedSymmetricGliderPullout_policy.npz` exists) and generate all figures:
