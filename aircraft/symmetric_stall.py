@@ -35,7 +35,7 @@ class SymmetricStall(AirplaneEnv):
         min_spawn_state = [-1.5, 0.9, np.deg2rad(14), -0.2]
         max_spawn_state = [-0.1, 2.0, np.deg2rad(20), 0.2]
 
-        flight_path_angle, airspeed_norm, alpha, pitch_rate = np.random.uniform(
+        flight_path_angle, airspeed_norm, alpha, pitch_rate = self.np_random.uniform(
             min_spawn_state, max_spawn_state
         )
         self.airplane.reset(flight_path_angle, airspeed_norm, alpha, pitch_rate)
@@ -79,7 +79,9 @@ class SymmetricStall(AirplaneEnv):
 
         # Apply catastrophic penalty only if boundaries are violated
         if failure:
-            reward = -1000.0 * self.airplane.STALL_AIRSPEED
+            reward = -1000.0
+        elif fpa_success:
+            reward += 500.0
 
         return self._get_obs(), reward, terminated, False, self._get_info()
 
