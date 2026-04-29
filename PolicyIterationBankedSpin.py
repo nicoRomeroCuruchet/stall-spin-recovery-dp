@@ -692,6 +692,10 @@ class PolicyIterationBankedSpin:
         return policy_stable
 
     def run(self) -> None:
+        """Run policy iteration to convergence and pull tensors back to host.
+
+        The caller is responsible for persisting the result via `pi.save(path)`.
+        """
         for n in range(self.config.n_steps):
             logger.info(f"--- Iteration {n + 1}/{self.config.n_steps} ---")
             self.policy_evaluation()
@@ -701,7 +705,6 @@ class PolicyIterationBankedSpin:
                 break
 
         self._pull_tensors_from_gpu()
-        self.save()
 
     def save(self, filepath: Path | None = None) -> None:
         if filepath is None:

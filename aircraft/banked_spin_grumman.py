@@ -15,7 +15,8 @@ class BankedSpinGrumman(ExtendedGrumman):
     moment (e) tables are deliberately not included: with β=0 and r=0
     they would not couple into the dynamics, and ṙ is not integrated.
 
-    With μ=0, p=0 and δa=0 the equations collapse to SymmetricFullGrumman.
+    With μ=0, p=0 and δa=0 the lateral derivatives μ̇, ṗ vanish exactly;
+    the symmetric subspace is invariant under the integrator.
     """
 
     def __init__(self):
@@ -23,9 +24,9 @@ class BankedSpinGrumman(ExtendedGrumman):
 
     def command_airplane(self, elevator, aileron, throttle):
         """
-        RK4 integration of 6 states. Mirrors the structure of
-        SymmetricFullGrumman.command_airplane and is intended to
-        match the 6-DOF CUDA kernel byte-for-byte.
+        RK4 integration of 6 states.  Same step structure as the GPU
+        kernel in PolicyIterationBankedSpin so that CPU and CUDA
+        trajectories track each other to float32 precision.
         """
         dt = self.TIME_STEP
         v_stall = self.STALL_AIRSPEED
