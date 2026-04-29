@@ -371,16 +371,15 @@ def plot_heatmaps(pi: PolicyIterationBankedSpin, prefix: str,
 
 def main():
     prefix = "banked_spin"
-    # Production-quality grid for an RTX 3090: ~97M states, ~4.3 GB VRAM,
-    # ~80-120 min training. Bin allocation prioritises α (stall transition)
-    # and γ (objective) at 30 bins each; V/Vs at 20 (narrow range);
-    # μ at 24; p/q at 15 (most trajectories stay near zero).
+    # ~10-min grid for an RTX 4090: ~14.9M states, ~360 MB VRAM.
+    # Bin allocation still prioritises α and γ (most sensitive dimensions).
+    # Promote to 30·20·30·24·15·15 (~80 min) for paper-quality output.
     env, states, actions, config = setup_banked_spin_experiment(
-        bins_gamma=30, bins_v=20, bins_alpha=30, bins_mu=24,
-        bins_p=15, bins_q=15,
+        bins_gamma=24, bins_v=18, bins_alpha=24, bins_mu=20,
+        bins_p=12, bins_q=12,
     )
-    config.theta = 5e-4
-    config.maximum_iterations = 8000
+    config.theta = 1e-3
+    config.maximum_iterations = 6000
 
     pi = train_or_load_policy(env, states, actions, config, prefix)
 
