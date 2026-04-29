@@ -56,7 +56,7 @@ def setup_banked_spin_experiment(
 
     bins_space = {
         "flight_path_angle": np.linspace(
-            np.deg2rad(-90), np.deg2rad(5), bins_gamma, dtype=np.float32),
+            np.deg2rad(-70), np.deg2rad(5), bins_gamma, dtype=np.float32),
         "airspeed_norm": np.linspace(
             0.9, 2.0, bins_v, dtype=np.float32),
         "alpha": np.linspace(
@@ -84,17 +84,17 @@ def setup_banked_spin_experiment(
         maximum_iterations=8000,
         log=False,
         log_interval=10,
-        # Longitudinal: same flat-altitude-loss formulation as 4DOF
-        w_q_penalty=0.0,
-        w_control_effort=60.0,
-        w_alpha_barrier_pos=0.0,
-        w_alpha_barrier_neg=0.0,
-        w_crash_penalty=0.0,
-        w_throttle_bonus=0.0,
-        # Lateral (Markov-compliant shaping)
-        w_p_penalty=0.01,
+        # Longitudinal shaping — re-enabled and balanced so no single term dominates
+        w_q_penalty=2.0,
+        w_control_effort=10.0,
+        w_alpha_barrier_pos=100.0,
+        w_alpha_barrier_neg=10.0,
+        w_crash_penalty=1000.0,
+        w_throttle_bonus=0.2,
+        # Lateral shaping (Markov-compliant)
+        w_p_penalty=0.1,
         w_mu_barrier=0.5,
-        w_aileron_effort=0.001,
+        w_aileron_effort=5.0,
     )
     logger.info(
         f"Experiment grid: states={len(states_space):,} ({tuple(int(b) for b in [bins_gamma, bins_v, bins_alpha, bins_mu, bins_p, bins_q])}),"

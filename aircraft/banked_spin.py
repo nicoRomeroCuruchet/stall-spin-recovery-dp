@@ -9,7 +9,7 @@ from aircraft.banked_spin_grumman import BankedSpinGrumman
 # so they live on the same scale as the base height-loss reward).
 W_P_PENALTY = 0.01       # penalises p² to discourage fast roll oscillations
 W_MU_BARRIER = 0.5       # soft quadratic barrier when |μ| exceeds μ_BARRIER
-W_AILERON_EFFORT = 0.001 # |δa| magnitude penalty (not |Δδa|, which is non-Markov)
+W_AILERON_EFFORT = 5.0   # δa² quadratic penalty (symmetric with W_CONTROL_EFFORT · δe²)
 
 MU_BARRIER = np.deg2rad(60.0)  # soft barrier kicks in past 60°
 MU_CRASH = np.pi / 2.0         # |μ| ≥ 90° = inverted, hard crash
@@ -96,7 +96,7 @@ class BankedSpin(AirplaneEnv):
         reward -= dt * W_P_PENALTY * p * p
         mu_excess = max(0.0, abs(mu) - MU_BARRIER)
         reward -= dt * W_MU_BARRIER * mu_excess * mu_excess
-        reward -= dt * W_AILERON_EFFORT * abs(aileron)
+        reward -= dt * W_AILERON_EFFORT * aileron * aileron
 
         # 5. Terminal evaluation
         fpa_success = (fpa >= 0.0)

@@ -444,7 +444,7 @@ class PolicyIterationBankedSpin:
 
             // Per-action effort terms (single application per macro-step)
             total_reward -= W_CONTROL_EFFORT * (de * de) * (dt_micro * n_micro);
-            total_reward -= W_AILERON_EFFORT * fabsf(da) * (dt_micro * n_micro);
+            total_reward -= W_AILERON_EFFORT * (da * da) * (dt_micro * n_micro);
             total_reward += W_THROTTLE_BONUS * throttle * fmaxf(1.0f - vn, 0.0f) * (dt_micro * n_micro);
         }
 
