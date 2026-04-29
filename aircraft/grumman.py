@@ -101,12 +101,49 @@ class Grumman:
              -0.0288, -0.0269, -0.0226, -0.0213, -0.0190, -0.0153],
             dtype=np.float32) * 57.2958
 
-        # Aerodynamic model: Cl coefficients
+        # Aerodynamic model: Cl coefficients (linear approximation, kept for reference)
         self.Cl_BETA = -0.1089
         self.Cl_PHAT = -0.52
         self.Cl_RHAT = 0.19
         self.Cl_AILERON = -0.1031
         self.Cl_RUDDER = 0.0143
+
+        # Riley (1985) Table III(f) — Rolling-moment coefficients, CT=0 and CT=0.5
+        # Same 14 alpha breakpoints as CL_o (-10° to 40°)
+        # Under A.i (β=0, r=0, δr=0) only Cl_o, Cl_p̂ and Cl_δa enter the dynamics;
+        # Cl_β, Cl_r̂ and Cl_δr would only matter if r/β/δr were active (future A.iii).
+
+        # Cl_o: asymmetric base rolling moment (dimensionless)
+        self._CL_ROLL_O_TABLE_CT0 = np.array(
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+             -0.0025, -0.0050, -0.0075, -0.0075,
+             -0.0075, -0.0075, -0.0075, -0.0075],
+            dtype=np.float32)
+        self._CL_ROLL_O_TABLE_CT05 = np.array(
+            [0.0060, 0.0040, 0.0020, 0.0, 0.0, 0.0,
+             -0.0025, -0.0050, -0.0075, -0.0075,
+             -0.0075, -0.0095, -0.0115, -0.0135],
+            dtype=np.float32)
+
+        # Cl_p̂: roll-damping derivative — multiplies p_hat = p·b/(2V) (dimensionless)
+        # At α=0, CT=0 → -0.52, matches the legacy linear constant Cl_PHAT.
+        self._CL_ROLL_PHAT_TABLE_CT0 = np.array(
+            [-0.5200, -0.5200, -0.5200, -0.5200, -0.4000, -0.3100,
+             -0.2200, -0.1300, -0.0400,  0.0500,
+              0.0000, -0.0500, -0.1000, -0.1500],
+            dtype=np.float32)
+        self._CL_ROLL_PHAT_TABLE_CT05 = np.array(
+            [-0.5200, -0.5200, -0.5200, -0.5200, -0.4000, -0.3100,
+             -0.2200, -0.1300, -0.0400,  0.0500,
+              0.0000, -0.0500, -0.1000, -0.1500],
+            dtype=np.float32)
+
+        # Cl_δa: aileron control derivative (Riley table is CT-independent; per deg → per rad)
+        self._CL_ROLL_DA_TABLE = np.array(
+            [-0.001040, -0.001040, -0.001040, -0.001000, -0.000920, -0.000880,
+             -0.000840, -0.000790, -0.000740, -0.000690,
+             -0.000600, -0.000500, -0.000400, -0.000330],
+            dtype=np.float32) * 57.2958
 
         # Physical model
         self.MASS = 715.21  # Mass (m) [kg] — Riley Table I: 1577 lb × 0.453592
@@ -115,6 +152,7 @@ class Grumman:
         self.WING_SPAN = 8.066  # Wing Span (b) [m] — Riley Table I: 26.46 ft × 0.3048
         self.I_XX = 808.06   # Inertia [Kg.m^2]
         self.I_YY = 1000.60  # Inertia [Kg.m^2] — Riley Table I: 738 slug·ft² × 1.35582
+        self.I_ZZ = 1719.18  # Inertia [Kg.m^2] — Riley Table I: 1268 slug·ft² × 1.35582
 
         # Stall angle of attack (αs) [rad] — flat-top onset per Riley Table III
         self.ALPHA_STALL = np.deg2rad(14)
@@ -263,6 +301,27 @@ class Grumman:
             + self.Cl_RUDDER * rudder
         )
         return c_rolling_moment
+
+    def _rolling_moment_coefficient_riley(self, alpha, p_hat, aileron, ct=0.0):
+        """
+        Rolling moment coefficient under A.i (β=0, r=0, δr=0).
+
+            Cl_b = Cl_o(α, CT) + Cl_p̂(α, CT) · p̂ + Cl_δa(α) · δa
+
+        p_hat = p · b / (2V) is dimensionless; aileron is in radians.
+        Tables come from Riley (1985) NASA-TM-86309 Table III(f).
+        """
+        alpha, p_hat, aileron = np.broadcast_arrays(
+            np.asarray(alpha, dtype=np.float32),
+            np.asarray(p_hat, dtype=np.float32),
+            np.asarray(aileron, dtype=np.float32),
+        )
+        cl_o = self._bilinear_interp(
+            alpha, ct, self._CL_ROLL_O_TABLE_CT0, self._CL_ROLL_O_TABLE_CT05)
+        cl_p = self._bilinear_interp(
+            alpha, ct, self._CL_ROLL_PHAT_TABLE_CT0, self._CL_ROLL_PHAT_TABLE_CT05)
+        cl_da = np.interp(alpha, self._CL_O_ALPHA_RAD, self._CL_ROLL_DA_TABLE)
+        return cl_o + cl_p * p_hat + cl_da * aileron
 
     def _rolling_moment_at_speed_and_cl(self, airspeed, rolling_moment_coefficient):
         return (
