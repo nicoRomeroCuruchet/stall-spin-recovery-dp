@@ -394,13 +394,16 @@ def main():
 
     pi = train_or_load_policy(env, states, actions, config, prefix)
 
-    # Initial condition: stall recovery from a banked descent
+    # Initial condition matching the 4DOF symmetric-stall test scenario
+    # (level flight, V slightly below stall, deep post-stall alpha) extended
+    # to 6DOF with mu = 0, p = 0. With well-trained dynamics the policy
+    # should pick delta_a ~ 0 throughout (wings-level recovery).
     hist = run_dp_simulation(
         pi,
-        gamma_0_deg=-15.0,
-        v_norm_0=1.0,
-        alpha_0_deg=18.0,
-        mu_0_deg=30.0,
+        gamma_0_deg=0.0,
+        v_norm_0=0.95,
+        alpha_0_deg=20.0,
+        mu_0_deg=0.0,
         p_0=0.0,
         q_0_deg=0.0,
     )
