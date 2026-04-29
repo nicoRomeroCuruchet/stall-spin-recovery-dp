@@ -121,9 +121,20 @@ def train_or_load_policy(
         logger.info(f"[+] Existing policy found: {policy_filename}. Loading...")
         try:
             pi = PolicyIterationBankedSpin.load(policy_path, env=env)
-            pi.states_space = states
-            logger.info("[+] Policy loaded successfully. Skipping training.")
-            return pi
+            cached_n_states = int(np.prod(pi.grid_shape))
+            requested_n_states = len(states)
+            if cached_n_states != requested_n_states:
+                logger.warning(
+                    f"[!] Cached policy was trained on {cached_n_states:,} states "
+                    f"({tuple(int(b) for b in pi.grid_shape)}) but the current "
+                    f"experiment requests {requested_n_states:,} states. "
+                    f"Discarding stale cache and retraining."
+                )
+                policy_path.unlink()
+            else:
+                pi.states_space = states
+                logger.info("[+] Policy loaded successfully. Skipping training.")
+                return pi
         except Exception as e:
             logger.error(f"[-] Failed to load policy: {e}. Forcing retrain...")
 
