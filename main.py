@@ -371,16 +371,16 @@ def plot_heatmaps(pi: PolicyIterationBankedSpin, prefix: str,
 
 def main():
     prefix = "banked_spin"
-    # First-pass coarse grid: ~1.3M states, 3-7 min training on RTX 3070.
-    # Promote to 15·15·15·15·11·11 (~30 min) or 20·20·20·20·15·15 (~2-3 h)
-    # once the heatmaps look sensible.
+    # Production-quality grid for an RTX 3090: ~97M states, ~4.3 GB VRAM,
+    # ~80-120 min training. Bin allocation prioritises α (stall transition)
+    # and γ (objective) at 30 bins each; V/Vs at 20 (narrow range);
+    # μ at 24; p/q at 15 (most trajectories stay near zero).
     env, states, actions, config = setup_banked_spin_experiment(
-        bins_gamma=12, bins_v=12, bins_alpha=12, bins_mu=12,
-        bins_p=8, bins_q=8,
+        bins_gamma=30, bins_v=20, bins_alpha=30, bins_mu=24,
+        bins_p=15, bins_q=15,
     )
-    # Loosen convergence threshold for the coarse grid
-    config.theta = 5e-3
-    config.maximum_iterations = 4000
+    config.theta = 5e-4
+    config.maximum_iterations = 8000
 
     pi = train_or_load_policy(env, states, actions, config, prefix)
 
