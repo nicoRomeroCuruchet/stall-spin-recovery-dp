@@ -239,18 +239,21 @@ def run_dp_simulation(
 
 def plot_time_response(hist: dict, prefix: str) -> None:
     """10-panel figure: γ, V/Vs, α, μ, p, q, δe, δa, δt, altitude_loss."""
+    STATE_COLOR = "#1F4E79"    # dark blue — states and derived altitude loss
+    ACTION_COLOR = "#D95F02"   # orange — control inputs
+
     t = hist["t"]
     panels = [
-        (np.rad2deg(hist["gamma"]),  r"$\gamma$ (deg)", "#532C8A", "plot"),
-        (hist["v_norm"],             r"$V/V_s$",         "#E377C2", "plot"),
-        (np.rad2deg(hist["alpha"]),  r"$\alpha$ (deg)",  "#D62728", "plot"),
-        (np.rad2deg(hist["mu"]),     r"$\mu$ (deg)",     "#9467BD", "plot"),
-        (np.rad2deg(hist["p"]),      r"$p$ (deg/s)",     "#8C564B", "plot"),
-        (np.rad2deg(hist["q"]),      r"$q$ (deg/s)",     "#2CA02C", "plot"),
-        (np.rad2deg(hist["de"]),     r"$\delta_e$ (deg)", "#FF8C00", "step"),
-        (np.rad2deg(hist["da"]),     r"$\delta_a$ (deg)", "#BCBD22", "step"),
-        (hist["dt_ctrl"],            r"$\delta_t$",       "#17BECF", "step"),
-        (hist["h"],                  "Altitude Loss (m)", "#1F77B4", "plot"),
+        (np.rad2deg(hist["gamma"]),  r"$\gamma$ (deg)",   STATE_COLOR,  "plot"),
+        (hist["v_norm"],             r"$V/V_s$",          STATE_COLOR,  "plot"),
+        (np.rad2deg(hist["alpha"]),  r"$\alpha$ (deg)",   STATE_COLOR,  "plot"),
+        (np.rad2deg(hist["mu"]),     r"$\mu$ (deg)",      STATE_COLOR,  "plot"),
+        (np.rad2deg(hist["p"]),      r"$p$ (deg/s)",      STATE_COLOR,  "plot"),
+        (np.rad2deg(hist["q"]),      r"$q$ (deg/s)",      STATE_COLOR,  "plot"),
+        (np.rad2deg(hist["de"]),     r"$\delta_e$ (deg)", ACTION_COLOR, "step"),
+        (np.rad2deg(hist["da"]),     r"$\delta_a$ (deg)", ACTION_COLOR, "step"),
+        (hist["dt_ctrl"],            r"$\delta_t$",       ACTION_COLOR, "step"),
+        (hist["h"],                  "Altitude Loss (m)", STATE_COLOR,  "plot"),
     ]
 
     fig, axs = plt.subplots(len(panels), 1, figsize=(8, 18), sharex=True)
@@ -394,17 +397,19 @@ def main():
 
     pi = train_or_load_policy(env, states, actions, config, prefix)
 
-    # Initial condition matching the 4DOF symmetric-stall test scenario
-    # (level flight, V slightly below stall, deep post-stall alpha) extended
-    # to 6DOF with mu = 0, p = 0. With well-trained dynamics the policy
-    # should pick delta_a ~ 0 throughout (wings-level recovery).
+    # Initial condition: SPIRAL DIVE (graveyard spiral).
+    # Below-stall alpha so the wings are flying, banked attitude that drives
+    # the descent, gamma steeply negative. Recovery requires the policy to
+    # roll wings-level FIRST, then pull out — pulling while banked tightens
+    # the spiral. This is the canonical 6DOF scenario the 4DOF model cannot
+    # represent (no mu state).
     hist = run_dp_simulation(
         pi,
-        gamma_0_deg=0.0,
-        v_norm_0=0.95,
-        alpha_0_deg=20.0,
-        mu_0_deg=0.0,
-        p_0=0.0,
+        gamma_0_deg=-45.0,   # mid of Robbie's -30..-60 range
+        v_norm_0=1.3,        # accelerated by the dive, well above stall
+        alpha_0_deg=6.0,     # safely below the 14 deg stall onset
+        mu_0_deg=30.0,       # moderate established bank
+        p_0=0.0,             # no rotation rate yet, just bank attitude
         q_0_deg=0.0,
     )
     plot_time_response(hist, prefix)
