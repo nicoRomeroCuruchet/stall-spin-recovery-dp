@@ -337,7 +337,7 @@ Black = −30 deg/s (roll back to wings-level). White = +30 deg/s (roll over, in
 
 | V/Vs = 1.2 | V/Vs = 4.0 |
 |:---:|:---:|
-| ![MuDot policy V=1.2](results/banked_pullout_L1_policy_MuDot_V_1.2.png) | ![MuDot policy V=4.0](results/banked_pullout_L1_policy_MuDot_V_4.0.png) |
+| ![MuDot policy V=1.2](results/banked_pullout_L3_policy_MuDot_V_1.2.png) | ![MuDot policy V=4.0](results/banked_pullout_L3_policy_MuDot_V_4.0.png) |
 
 ---
 
