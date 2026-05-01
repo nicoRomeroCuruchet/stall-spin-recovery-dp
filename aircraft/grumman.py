@@ -42,21 +42,21 @@ class Grumman:
         self.Cl_AILERON = -0.1031
         self.Cl_RUDDER = 0.0143
         
-        # Physical model
-        self.MASS = 697.18  # Mass (m) [kg]
-        self.WING_SURFACE_AREA = 9.1147  # Wing surface area (S) [m2]
-        self.CHORD = 1.22  # Chord (c) [m]
-        self.WING_SPAN = 7.41  # Wing Span (b) [m]
-        self.I_XX = 808.06   # Inertia [Kg.m^2]
-        self.I_YY = 1011.43  # Inertia [Kg.m^2]
-        
-        self.ALPHA_STALL = np.deg2rad(15)  # Stall angle of attack (αs) [rad]
+        # Physical model — aligned to Riley (1985) NASA TM-86309 Table I
+        # for direct comparison with the 6DOF banked-spin branch.
+        self.MASS = 715.21              # Mass (m) [kg]   — 1577 lb × 0.453592
+        self.WING_SURFACE_AREA = 9.1147 # Wing area (S) [m^2]
+        self.CHORD = 1.22               # Chord (c) [m]
+        self.WING_SPAN = 8.066          # Wing Span (b) [m] — 26.46 ft × 0.3048
+        self.I_XX = 808.06              # Inertia [kg·m^2]
+        self.I_YY = 1000.60             # Inertia [kg·m^2] — 738 slug·ft^2 × 1.35582
+        self.I_ZZ = 1719.18             # Inertia [kg·m^2] — 1268 slug·ft^2 × 1.35582
 
-        # Negative stall angle of attack (αs) [rad]
-        self.ALPHA_NEGATIVE_STALL = np.deg2rad(-7)
+        self.ALPHA_STALL = np.deg2rad(14)           # Riley flat-top onset
+        self.ALPHA_NEGATIVE_STALL = np.deg2rad(-10) # Riley negative-stall onset
 
         self.CL_STALL = self.CL_0 + self.CL_ALPHA * self.ALPHA_STALL
-        self.CL_REF = 1.2  # CL_max (positive stall, Bunge 2018)
+        self.CL_REF = 1.26  # CL_max from Riley Table III(a) flat-top plateau (CT=0)
         
         # Stall air speed (Vs) [m/s]
         self.STALL_AIRSPEED = np.sqrt(

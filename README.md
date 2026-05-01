@@ -162,22 +162,34 @@ In the 3-DOF reduced model only the longitudinal CL and the polynomial drag CD(�
 α is recovered from the commanded CL via the linear inversion `α = (CL − CL₀) / CL_α`. Lateral
 coefficients are listed for completeness — they are not used by the reduced model.
 
-**Aircraft parameters:**
+**Aircraft parameters** (aligned to Riley 1985 Table I for cross-comparison
+with the 6-DOF banked-spin branch):
 
-| Parameter | Value | Units |
-|---|---|---|
-| m (mass) | 697.18 | kg |
-| S (wing area) | 9.1147 | m² |
-| b (wingspan) | 7.41 | m |
-| ρ (sea-level density) | 1.225 | kg/m³ |
-| CL_max (positive stall) | 1.2 | — |
-| CL_min (negative stall) | −0.7 | — |
-| Vs (stall speed) | ≈ 32 | m/s |
+| Parameter | Value | Units | Source |
+|---|---|---|---|
+| m (mass) | 715.21 | kg | Riley Table I (1577 lb) |
+| S (wing area) | 9.1147 | m² | Riley Table I |
+| c (chord) | 1.22 | m | Riley Table I |
+| b (wingspan) | 8.066 | m | Riley Table I (26.46 ft) |
+| I_xx | 808.06 | kg·m² | Riley Table I |
+| I_yy | 1000.60 | kg·m² | Riley Table I (738 slug·ft²) |
+| I_zz | 1719.18 | kg·m² | Riley Table I (1268 slug·ft²) |
+| ρ (sea-level density) | 1.225 | kg/m³ | — |
+| CL_max (positive stall) | 1.26 | — | Riley III(a) flat-top plateau, CT=0 |
+| α_stall⁺ | 14 | deg | Riley III(a) flat-top onset |
+| α_stall⁻ | −10 | deg | Riley III(a) negative-stall onset |
+| Vs (stall speed) | ≈ 31.6 | m/s | computed below |
+
+> The 3-DOF reduced model uses Bunge 2018's **linear longitudinal aero**
+> (CL = 0.41 + 4.6983 α + ..., CD polynomial in α). Only the *physical
+> parameters* above (mass, geometry, inertias, CL_max for Vs calibration,
+> stall onset α's) are aligned to Riley. The aero coefficient fit stays
+> Bunge — that is the modeling choice this branch represents.
 
 Vs is computed from level-flight equilibrium at CL_max:
 ```
 Vs = sqrt(2 m g / (ρ S CL_max))
-   = sqrt(2 × 697.18 × 9.81 / (1.225 × 9.1147 × 1.2))  ≈  31.9 m/s
+   = sqrt(2 × 715.21 × 9.81 / (1.225 × 9.1147 × 1.26))  ≈  31.57 m/s
 ```
 
 ---
