@@ -316,7 +316,7 @@ Recovery from a moderate spiral dive: γ₀ = −45 deg, V/Vs = 1.3, μ₀ = 30 
 This single-trajectory case is the natural reference scenario for cross-comparison
 with the 6-DOF banked-spin model on the same initial condition.
 
-<img src="results/banked_pullout_L1_validation_guided_Fig5.png" width="900"/>
+<img src="results/banked_pullout_L3_validation_guided_Fig5.png" width="900"/>
 
 ---
 
