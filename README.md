@@ -291,7 +291,7 @@ four levels.
 Minimum pullout altitude loss as a function of bank angle and flight path angle,
 for four normalized airspeeds. Warmer colors indicate greater altitude loss.
 
-<img src="results/banked_pullout_L1_value_function_contours.png" width="1000"/>
+<img src="results/banked_pullout_L3_value_function_contours.png" width="1000"/>
 
 ---
 
@@ -308,7 +308,7 @@ For Fig3 and Fig4 each curve corresponds to a different initial bank angle
 
 | γ₀ = −30 deg, V/Vs = 1.2 | γ₀ = −60 deg, V/Vs = 1.2 |
 |:---:|:---:|
-| ![Validation Fig3](results/banked_pullout_L1_validation_guided_Fig3.png) | ![Validation Fig4](results/banked_pullout_L1_validation_guided_Fig4.png) |
+| ![Validation Fig3](results/banked_pullout_L3_validation_guided_Fig3.png) | ![Validation Fig4](results/banked_pullout_L3_validation_guided_Fig4.png) |
 
 #### Spiral-dive scenario (single μ₀ = 30 deg, V/Vs = 1.3)
 
@@ -327,7 +327,7 @@ The switching surface shifts with airspeed.
 
 | V/Vs = 1.2 | V/Vs = 4.0 |
 |:---:|:---:|
-| ![CL policy V=1.2](results/banked_pullout_L1_policy_CL_V_1.2.png) | ![CL policy V=4.0](results/banked_pullout_L1_policy_CL_V_4.0.png) |
+| ![CL policy V=1.2](results/banked_pullout_L3_policy_CL_V_1.2.png) | ![CL policy V=4.0](results/banked_pullout_L3_policy_CL_V_4.0.png) |
 
 ---
 
@@ -348,7 +348,7 @@ and makes throttle modulation visible above Vs.
 
 | V/Vs = 1.2 | V/Vs = 4.0 |
 |:---:|:---:|
-| ![DeltaT policy V=1.2](results/banked_pullout_L1_policy_DeltaT_V_1.2.png) | ![DeltaT policy V=4.0](results/banked_pullout_L1_policy_DeltaT_V_4.0.png) |
+| ![DeltaT policy V=1.2](results/banked_pullout_L3_policy_DeltaT_V_1.2.png) | ![DeltaT policy V=4.0](results/banked_pullout_L3_policy_DeltaT_V_4.0.png) |
 
 ---
 
