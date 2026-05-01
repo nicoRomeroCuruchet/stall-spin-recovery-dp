@@ -1,4 +1,4 @@
-# 3-DOF Reduced Banked Pullout Model
+# 3-DOF Reduced Banked Pullout Model with Thrust
 
 Research code for aircraft stall and spin upset recovery using VRAM-accelerated Dynamic Programming.
 The core approach solves the minimal altitude loss recovery problem as an infinite-horizon optimal control
@@ -6,6 +6,12 @@ problem via massively parallel Policy Iteration on continuous-state MDPs. Dynami
 on-the-fly using 4th-order Runge-Kutta entirely within GPU registers, avoiding the memory-bound
 limitations of traditional transition table methods. Reference aircraft: **Grumman AA-1 Yankee**
 (Riley 1985, NASA TM-86309).
+
+This branch extends the original *idle-power* reduced banked pullout from Bunge 2018 by adding
+**throttle (δt) as a third action input**. The aerodynamic model remains the same linear/polynomial
+formulation as in Bunge 2018 (CL is still commanded by an idealized inner-loop controller), so the
+DP problem stays at 3 states; the only structural change is one extra dimension in the action space
+plus a propulsive thrust term in V̇.
 
 *Based on: Bunge, Pavone & Kroo, "Minimal Altitude Loss Pullout Maneuvers," AIAA GNC 2018.*
 
@@ -23,29 +29,25 @@ stall-spin/
 │
 ├── aircraft/                        # Physical aircraft models
 │   ├── grumman.py                   # AA-1 Yankee: parameters, aerodynamic coefficients,
-│   │                                #   and helper methods (CL, CD, Cm, RK4 integrator)
-│   └── reduced_grumman.py          # 3DOF reduced dynamics: implements the coupled
-│                                    #   V̇, γ̇, μ̇ equations via vectorized RK4
+│   │                                #   throttle linear mapping, RK4 integrator helper
+│   └── reduced_grumman.py           # 3DOF reduced dynamics: V̇, γ̇, μ̇ with thrust term
 │
 ├── envs/                            # Gymnasium environments
-│   ├── __init__.py                  # Gym registration (ReducedBankedGliderPullout-v0)
-│   ├── base.py                      # AirplaneEnv: base gym.Env with render/seed scaffold
-│   └── reduced_banked_pullout.py   # 3DOF banked glider env: observation/action spaces,
-│                                    #   step(), reset(), terminal condition (γ ≥ 0)
+│   ├── __init__.py                  # Gym registration
+│   ├── base.py                      # AirplaneEnv: base gym.Env scaffold
+│   └── reduced_banked_pullout.py    # 3DOF env: 3D obs, 3D action (CL, μ̇, δt), reward
 │
 ├── solver/                          # Optimization algorithms
-│   ├── policy_iteration.py          # GPU Policy Iteration: CUDA kernels for RK4 dynamics,
-│   │                                #   barycentric interpolation, Bellman updates,
-│   │                                #   policy evaluation and improvement loops
-│   └── casadi_optimizer.py         # CasADi/IPOPT NLP: multiple-shooting trajectory
-│                                    #   optimizer warm-started from the DP policy
+│   ├── policy_iteration.py          # GPU Policy Iteration: CUDA RK4 with thrust term,
+│   │                                #   barycentric interpolation, Bellman updates
+│   └── casadi_optimizer.py          # CasADi/IPOPT NLP optimizer (still 2D — idle power)
 │
 └── analysis/                        # Training configs, visualization and inference
     ├── experiments.py               # Grid level configs (L1–L4), Numba state/action
-    │                                #   space generators, GPU profiling with CUDA events
-    ├── plotting.py                  # Policy heatmaps, value function contours,
+    │                                #   space generators (3D action), GPU profiling
+    ├── plotting.py                  # Policy heatmaps (CL, μ̇, δt), value function contours,
     │                                #   DP vs CasADi trajectory validation plots
-    └── interpolation.py            # Barycentric interpolation on N-D regular grids
+    └── interpolation.py             # Barycentric interpolation on N-D regular grids
                                      #   and get_optimal_action() for inference
 ```
 
@@ -94,46 +96,53 @@ Then install the matching wheel:
 ### 4. Run
 
 ```bash
-python main_banked.py --level 1
+python main.py --level 1
 ```
 
 Use `--retrain` to force retraining instead of loading a cached policy:
 
 ```bash
-python main_banked.py --level 1 --retrain
+python main.py --level 1 --retrain
 ```
+
+Available levels: `1` (paper grid, ~53k states), `2` (~409k), `3` (~4M), `4` (~32M, needs 24 GB VRAM).
 
 ---
 
 ## Model Description
 
-This branch implements the reduced-order 3-DOF point-mass model from the paper, derived from
+This branch implements the reduced-order 3-DOF point-mass model from Bunge 2018, derived from
 the full 6-DOF equations under the following simplifying assumptions:
 
 - **β ≈ 0**: sideslip angle remains near zero throughout the maneuver.
 - **CL and μ̇ are directly commanded** by inner-loop controllers (high-bandwidth, dynamics neglected).
 - **CD = CD(CL)**: drag is a function of lift coefficient only (no sideslip dependency).
 - **CY ≈ 0**: lateral aerodynamic side force is negligible.
-- **Idle power** (δt not a control input; this investigation is limited to idle power maneuvers).
+- **Throttle (δt) is a third control input** (extension over Bunge 2018, which used idle power only).
+  Thrust is modeled as a pure propulsive force in the velocity equation.
 
 Under these assumptions the full equations of motion (Appendix A.2 of the paper) reduce to a
-3-state system with state **x = (V, γ, μ)** and control **a = (CL_cmd, μ̇_cmd)**.
+**3-state system** with state **x = (V, γ, μ)** and **3-action control** **a = (CL_cmd, μ̇_cmd, δt)**.
 
 ---
 
 ## Equations of Motion
 
 ```
-V̇  = -g sin γ  -  (1/2) ρ (S/m) V² CD(CL_cmd)             (3a)
-γ̇  =  (1/2) ρ (S/m) V CL_cmd cos μ  -  (g/V) cos γ        (3b)
-μ̇  =  μ̇_cmd                                               (3c)
+V̇  = -g sin γ  -  (1/2) ρ (S/m) V² CD(CL_cmd)  +  K_t δ_t / m       (3a)
+γ̇  =  (1/2) ρ (S/m) V CL_cmd cos μ  -  (g/V) cos γ                   (3b)
+μ̇  =  μ̇_cmd                                                          (3c)
 ```
+
+The propulsive term `K_t δ_t / m` in (3a) is the only structural change vs Bunge 2018.
+`K_t` is calibrated so that full throttle (δt = 1) sustains level flight at V = 2 V_s
+(see *Throttle Model* below).
 
 ---
 
 ## Aerodynamic Model — Grumman American AA-1 Yankee
 
-Stability and control derivative model (Eq. 14, Table 2 of the paper). All angular derivatives per radian.
+Stability and control derivative model (Eq. 14, Table 2 of Bunge 2018). All angular derivatives per radian.
 
 **Longitudinal:**
 ```
@@ -148,6 +157,10 @@ CY = -0.6303 β  +  0.0160 p̂  +  1.1000 r̂  -  0.0057 δa  +  0.1690 δr
 Cl = -0.1089 β  -  0.5200 p̂  +  0.1900 r̂  -  0.1031 δa  +  0.0143 δr
 Cn =  0.1003 β  -  0.0600 p̂  -  0.2000 r̂  +  0.0017 δa  -  0.0802 δr
 ```
+
+In the 3-DOF reduced model only the longitudinal CL and the polynomial drag CD(α) are used.
+α is recovered from the commanded CL via the linear inversion `α = (CL − CL₀) / CL_α`. Lateral
+coefficients are listed for completeness — they are not used by the reduced model.
 
 **Aircraft parameters:**
 
@@ -167,9 +180,26 @@ Vs = sqrt(2 m g / (ρ S CL_max))
    = sqrt(2 × 697.18 × 9.81 / (1.225 × 9.1147 × 1.2))  ≈  31.9 m/s
 ```
 
-> **Bug in PolicyIteration.py:** `v_stall` is computed using
-> `cl_ref = CL0 + CLA * deg2rad(15) ≈ 1.64` (above stall CL), giving Vs ≈ 27.3 m/s
-> instead of ≈ 32 m/s. Fix: use `CL_max = 1.2` as the reference.
+---
+
+## Throttle Model
+
+Thrust is modeled as a **linear mapping** of the throttle command:
+
+```
+T(δ_t)  =  K_t · δ_t,        with  0 ≤ δ_t ≤ 1
+```
+
+`K_t` is calibrated so that full throttle (δ_t = 1) holds level flight at the maximum cruise speed
+**V_max = 2 V_s**, i.e. at level cruise the propulsive force exactly balances drag at V_max:
+
+```
+K_t  =  D(V_max)  =  (1/2) ρ S V_max² CD(α_trim)
+```
+
+where α_trim is the trim angle of attack required to support 1g flight at V_max. This calibration
+is done once at construction (`Grumman._initialize_throttle_model`) and the resulting numerical
+value is exposed as `THROTTLE_LINEAR_MAPPING` ≈ 1110 N.
 
 ---
 
@@ -194,17 +224,47 @@ p_max  ≈  p̂_max (2 V_ref / b)  =  |Cl_δa / Cl_p| δa_max (2 V_ref / b)   (5
 For the AA-1 Yankee: Cl_p ≈ −0.5, Cl_δa ≈ −0.0595 1/deg, δa_max = 25 deg, b = 7.41 m,
 Vs ≈ 32 m/s → **p_max ≈ 30 deg/s**.
 
+The throttle command is bounded to its physical range:
+
+```
+0  ≤  δ_t  ≤  1                                            (6)
+```
+
 ---
 
-## State-Space Discretization (Table 1 of the paper)
+## Reward Shaping
 
-| Variable | Lower Bound | Increment | Upper Bound | Units |
-|---|---|---|---|---|
-| V | 0.9 | 0.1 | 4.0 | 1/Vs |
-| γ | −180 | 5 | 0 | deg |
-| μ | −20 | 5 | 200 | deg |
-| CL_cmd | −0.5 | 0.25 | 1.0 | — |
-| μ̇_cmd | −30 | 5 | 30 | deg/s |
+The per-step reward in the CUDA kernel matches the Gymnasium env step():
+
+```
+r = h_dot · dt   −  0.01 · μ̇²_cmd · dt   +  0.2 · δt · max(1 − V/Vs, 0) · dt
+```
+
+Term-by-term:
+
+- `h_dot · dt = V sin γ · dt` — primary cost (negative when descending; DP minimizes altitude loss).
+- `−0.01 · μ̇² · dt` — bank-rate effort penalty (Bunge 2018).
+- `+0.2 · δt · max(1 − V/Vs, 0) · dt` — **throttle bonus** (new). Provides a soft incentive to use
+  throttle while the aircraft is below stall speed; vanishes once V ≥ Vs. Without this term the
+  policy would saturate δt = 1 everywhere because higher thrust always helps the recovery and there
+  is no other cost on it.
+
+---
+
+## State-Space Discretization (Bunge 2018 Table 1, with δt extension)
+
+| Variable | Lower Bound | Increment | Upper Bound | Units | Bins (L1) |
+|---|---|---|---|---|---|
+| V | 0.9 | 0.1 | 4.0 | 1/Vs | 32 |
+| γ | −180 | 5 | 0 | deg | 37 |
+| μ | −20 | 5 | 200 | deg | 45 |
+| **CL_cmd** | **−0.5** | **0.25** | **1.0** | **—** | **7** |
+| **μ̇_cmd** | **−30** | **5** | **30** | **deg/s** | **13** |
+| **δt** | **0.0** | **0.25** | **1.0** | **—** | **5** |
+
+Total at level L1: 37 × 32 × 45 = **53,280 states**, 7 × 13 × 5 = **455 actions**. Levels L2–L4
+refine the state space (up to ~32 M states at L4, 24 GB VRAM); the action grid is shared across all
+four levels.
 
 ---
 
@@ -215,7 +275,7 @@ Vs ≈ 32 m/s → **p_max ≈ 30 deg/s**.
 Minimum pullout altitude loss as a function of bank angle and flight path angle,
 for four normalized airspeeds. Warmer colors indicate greater altitude loss.
 
-<img src="results/banked_glider_L1_value_function_contours.png" width="1000"/>
+<img src="results/banked_pullout_L1_value_function_contours.png" width="1000"/>
 
 ---
 
@@ -225,9 +285,13 @@ Optimal pullout trajectories comparing the DP Policy Iteration solution (global 
 against a CasADi/IPOPT continuous NLP warm-started from the DP policy (cyan dashed).
 Each curve corresponds to a different initial bank angle μ₀ ∈ {30, 60, 90, 120, 150} deg (left to right).
 
+> **Note**: the CasADi NLP solver is still the original 2D (CL, μ̇) idle-power formulation from
+> Bunge 2018, while the DP rollout uses the full 3D action with throttle. The DP curve will
+> generally show smaller altitude loss than CasADi by virtue of having access to the extra control.
+
 | γ₀ = −30 deg, V/Vs = 1.2 | γ₀ = −60 deg, V/Vs = 1.2 |
 |:---:|:---:|
-| ![Validation Fig3](results/banked_glider_L1_validation_guided_Fig3.png) | ![Validation Fig4](results/banked_glider_L1_validation_guided_Fig4.png) |
+| ![Validation Fig3](results/banked_pullout_L1_validation_guided_Fig3.png) | ![Validation Fig4](results/banked_pullout_L1_validation_guided_Fig4.png) |
 
 ---
 
@@ -238,7 +302,7 @@ The switching surface shifts with airspeed.
 
 | V/Vs = 1.2 | V/Vs = 4.0 |
 |:---:|:---:|
-| ![CL policy V=1.2](results/banked_glider_L1_policy_CL_V_1.2.png) | ![CL policy V=4.0](results/banked_glider_L1_policy_CL_V_4.0.png) |
+| ![CL policy V=1.2](results/banked_pullout_L1_policy_CL_V_1.2.png) | ![CL policy V=4.0](results/banked_pullout_L1_policy_CL_V_4.0.png) |
 
 ---
 
@@ -248,7 +312,18 @@ Black = −30 deg/s (roll back to wings-level). White = +30 deg/s (roll over, in
 
 | V/Vs = 1.2 | V/Vs = 4.0 |
 |:---:|:---:|
-| ![MuDot policy V=1.2](results/banked_glider_L1_policy_MuDot_V_1.2.png) | ![MuDot policy V=4.0](results/banked_glider_L1_policy_MuDot_V_4.0.png) |
+| ![MuDot policy V=1.2](results/banked_pullout_L1_policy_MuDot_V_1.2.png) | ![MuDot policy V=4.0](results/banked_pullout_L1_policy_MuDot_V_4.0.png) |
+
+---
+
+### Optimal Policy for δ*_t
+
+Black = 0 (idle). White = 1 (full throttle). The throttle bonus encourages full throttle below Vs
+and makes throttle modulation visible above Vs.
+
+| V/Vs = 1.2 | V/Vs = 4.0 |
+|:---:|:---:|
+| ![DeltaT policy V=1.2](results/banked_pullout_L1_policy_DeltaT_V_1.2.png) | ![DeltaT policy V=4.0](results/banked_pullout_L1_policy_DeltaT_V_4.0.png) |
 
 ---
 
@@ -277,7 +352,8 @@ Black = −30 deg/s (roll back to wings-level). White = +30 deg/s (roll over, in
 | δe | elevator deflection, positive trailing edge down |
 | δr | rudder deflection, positive trailing edge to the left |
 | δa | aileron deflection, positive trailing edge down of right aileron |
-| δt | throttle position |
+| δt | throttle position (third control input in this branch) |
+| K_t | linear thrust mapping coefficient (T = K_t · δt) |
 | CL_cmd | commanded lift coefficient (outer-loop control input) |
 | μ̇_cmd | commanded bank rate (outer-loop control input) |
 | L, D, Y | aerodynamic lift, drag and side force |
