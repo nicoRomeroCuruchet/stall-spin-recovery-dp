@@ -73,6 +73,9 @@ class PolicyIteration:
         # Aerodynamic setup for Banked Glider
         cl_ref = 1.2  # CL_max (positive stall, Bunge 2018)
         self.v_stall = np.sqrt((697.18 * 9.81) / (0.5 * 1.225 * 9.1147 * cl_ref))
+        # Thrust mapping: max-thrust calibration so that delta_t = 1 holds level
+        # flight at V = 2 V_s (matches grumman.THROTTLE_LINEAR_MAPPING).
+        self.k_thrust = float(env.airplane.THROTTLE_LINEAR_MAPPING)
 
         self._precompute_grid_metadata()
         self._allocate_tensors_and_compile()
@@ -142,8 +145,8 @@ class PolicyIteration:
         extern "C" {
         
         __device__ void get_derivatives(
-            float gamma, float vn, float mu, float cl, float mu_dot,
-            float& d_gamma, float& d_vn, float& d_mu, float v_stall
+            float gamma, float vn, float mu, float cl, float mu_dot, float throttle,
+            float& d_gamma, float& d_vn, float& d_mu, float v_stall, float k_thrust
         ) {
             const float MASS = 697.18f;
             const float S = 9.1147f;
@@ -159,24 +162,32 @@ class PolicyIteration:
             float alpha = (cl - CL0) / CLA;
             float cd = CD0 + CDA * alpha + CDA2 * alpha * alpha;
             float dyn_pressure = 0.5f * RHO * (S / MASS);
-            
-            d_vn = (-G * sinf(gamma) - dyn_pressure * v_true * v_true * cd) / v_stall;
+
+            // Thrust as a pure propulsive force: T = k_thrust * delta_t
+            d_vn = (-G * sinf(gamma)
+                    - dyn_pressure * v_true * v_true * cd
+                    + k_thrust * throttle / MASS) / v_stall;
             float v_t_safe = fmaxf(v_true, 0.1f);
             d_gamma = dyn_pressure * v_true * cl * cosf(mu) - (G / v_t_safe) * cosf(gamma);
             d_mu = mu_dot;
         }
 
         __device__ void rk4_step(
-            float& gamma, float& vn, float& mu, 
-            float cl, float mu_dot, float dt, float v_stall, float& reward
+            float& gamma, float& vn, float& mu,
+            float cl, float mu_dot, float throttle,
+            float dt, float v_stall, float k_thrust, float& reward
         ) {
             float k1_g, k1_v, k1_m, k2_g, k2_v, k2_m;
             float k3_g, k3_v, k3_m, k4_g, k4_v, k4_m;
 
-            get_derivatives(gamma, vn, mu, cl, mu_dot, k1_g, k1_v, k1_m, v_stall);
-            get_derivatives(gamma + 0.5f*dt*k1_g, vn + 0.5f*dt*k1_v, mu + 0.5f*dt*k1_m, cl, mu_dot, k2_g, k2_v, k2_m, v_stall);
-            get_derivatives(gamma + 0.5f*dt*k2_g, vn + 0.5f*dt*k2_v, mu + 0.5f*dt*k2_m, cl, mu_dot, k3_g, k3_v, k3_m, v_stall);
-            get_derivatives(gamma + dt*k3_g, vn + dt*k3_v, mu + dt*k3_m, cl, mu_dot, k4_g, k4_v, k4_m, v_stall);
+            get_derivatives(gamma, vn, mu, cl, mu_dot, throttle,
+                            k1_g, k1_v, k1_m, v_stall, k_thrust);
+            get_derivatives(gamma + 0.5f*dt*k1_g, vn + 0.5f*dt*k1_v, mu + 0.5f*dt*k1_m,
+                            cl, mu_dot, throttle, k2_g, k2_v, k2_m, v_stall, k_thrust);
+            get_derivatives(gamma + 0.5f*dt*k2_g, vn + 0.5f*dt*k2_v, mu + 0.5f*dt*k2_m,
+                            cl, mu_dot, throttle, k3_g, k3_v, k3_m, v_stall, k_thrust);
+            get_derivatives(gamma + dt*k3_g, vn + dt*k3_v, mu + dt*k3_m,
+                            cl, mu_dot, throttle, k4_g, k4_v, k4_m, v_stall, k_thrust);
 
             gamma += (dt / 6.0f) * (k1_g + 2.0f*k2_g + 2.0f*k3_g + k4_g);
             vn += (dt / 6.0f) * (k1_v + 2.0f*k2_v + 2.0f*k3_v + k4_v);
@@ -185,6 +196,8 @@ class PolicyIteration:
             float v_true = vn * v_stall;
             float h_dot = v_true * sinf(gamma);
             reward = h_dot * dt - 0.01f * mu_dot * mu_dot * dt;
+            // Throttle bonus: reward soft incentive to throttle back when V >= V_s
+            reward += 0.2f * throttle * fmaxf(1.0f - vn, 0.0f) * dt;
         }
 
         __device__ void get_barycentric_3d(
@@ -222,7 +235,7 @@ class PolicyIteration:
             const float* states, const float* actions, const int* policy,
             const float* V, float* new_V, const bool* is_term,
             const float* b_low, const float* b_high, const int* g_shape, const int* strides,
-            int n_states, float gamma_discount, float dt, float v_stall
+            int n_states, float gamma_discount, float dt, float v_stall, float k_thrust
         ) {
             int s_idx = blockIdx.x * blockDim.x + threadIdx.x;
             if (s_idx >= n_states) return;
@@ -237,11 +250,12 @@ class PolicyIteration:
             float vn    = states[s_idx * 3 + 1];
             float mu    = states[s_idx * 3 + 2];
 
-            float cl     = actions[a_idx * 2 + 0];
-            float mu_dot = actions[a_idx * 2 + 1];
+            float cl       = actions[a_idx * 3 + 0];
+            float mu_dot   = actions[a_idx * 3 + 1];
+            float throttle = actions[a_idx * 3 + 2];
 
             float reward;
-            rk4_step(gamma, vn, mu, cl, mu_dot, dt, v_stall, reward);
+            rk4_step(gamma, vn, mu, cl, mu_dot, throttle, dt, v_stall, k_thrust, reward);
 
             int idxs[8]; float wgts[8];
             get_barycentric_3d(gamma, vn, mu, b_low, b_high, g_shape, strides, idxs, wgts);
@@ -258,7 +272,8 @@ class PolicyIteration:
             const float* states, const float* actions, int* policy,
             const float* V, const bool* is_term,
             const float* b_low, const float* b_high, const int* g_shape, const int* strides,
-            int n_states, int n_actions, float gamma_discount, float dt, float v_stall,
+            int n_states, int n_actions, float gamma_discount, float dt,
+            float v_stall, float k_thrust,
             int* policy_changes
         ) {
             int s_idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -277,11 +292,12 @@ class PolicyIteration:
                 float vn    = init_vn;
                 float mu    = init_mu;
 
-                float cl     = actions[a * 2 + 0];
-                float mu_dot = actions[a * 2 + 1];
+                float cl       = actions[a * 3 + 0];
+                float mu_dot   = actions[a * 3 + 1];
+                float throttle = actions[a * 3 + 2];
 
                 float reward;
-                rk4_step(gamma, vn, mu, cl, mu_dot, dt, v_stall, reward);
+                rk4_step(gamma, vn, mu, cl, mu_dot, throttle, dt, v_stall, k_thrust, reward);
 
                 int idxs[8]; float wgts[8];
                 get_barycentric_3d(gamma, vn, mu, b_low, b_high, g_shape, strides, idxs, wgts);
@@ -370,7 +386,8 @@ class PolicyIteration:
                     self.d_states, self.d_actions, self.d_policy,
                     self.d_value_function, self.d_new_value_function, self.d_terminal_mask,
                     self.d_bounds_low, self.d_bounds_high, self.d_grid_shape, self.d_strides,
-                    np.int32(self.n_states), np.float32(self.config.gamma), np.float32(0.01), np.float32(self.v_stall)
+                    np.int32(self.n_states), np.float32(self.config.gamma),
+                    np.float32(0.01), np.float32(self.v_stall), np.float32(self.k_thrust)
                 )
             )
             
@@ -397,7 +414,9 @@ class PolicyIteration:
                 self.d_states, self.d_actions, self.d_policy,
                 self.d_value_function, self.d_terminal_mask,
                 self.d_bounds_low, self.d_bounds_high, self.d_grid_shape, self.d_strides,
-                np.int32(self.n_states), np.int32(self.n_actions), np.float32(self.config.gamma), np.float32(0.01), np.float32(self.v_stall),
+                np.int32(self.n_states), np.int32(self.n_actions),
+                np.float32(self.config.gamma), np.float32(0.01),
+                np.float32(self.v_stall), np.float32(self.k_thrust),
                 d_policy_changes
             )
         )
