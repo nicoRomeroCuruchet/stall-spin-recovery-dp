@@ -70,9 +70,11 @@ class PolicyIteration:
         self.n_states, self.n_dims = self.states_space.shape
         self.n_actions = len(self.action_space)
         self.n_corners = 2**self.n_dims
-        # Aerodynamic setup for Banked Glider
-        cl_ref = 1.2  # CL_max (positive stall, Bunge 2018)
-        self.v_stall = np.sqrt((697.18 * 9.81) / (0.5 * 1.225 * 9.1147 * cl_ref))
+        # Aerodynamic setup — aligned to Riley (1985) Table I for cross-comparison
+        # with the 6DOF banked-spin branch.
+        cl_ref = 1.26   # Riley Table III(a) flat-top plateau, CT=0
+        mass = 715.21   # Riley Table I
+        self.v_stall = np.sqrt((mass * 9.81) / (0.5 * 1.225 * 9.1147 * cl_ref))
         # Thrust mapping: max-thrust calibration so that delta_t = 1 holds level
         # flight at V = 2 V_s (matches grumman.THROTTLE_LINEAR_MAPPING).
         self.k_thrust = float(env.airplane.THROTTLE_LINEAR_MAPPING)
@@ -148,7 +150,11 @@ class PolicyIteration:
             float gamma, float vn, float mu, float cl, float mu_dot, float throttle,
             float& d_gamma, float& d_vn, float& d_mu, float v_stall, float k_thrust
         ) {
-            const float MASS = 697.18f;
+            // Physical params aligned to Riley (1985) Table I for cross-
+            // comparison with the 6DOF branch. Aero coefficients (CL_*, CD_*)
+            // remain the Bunge 2018 linear/polynomial fit because the 3DOF
+            // reduced model commands CL directly and uses polynomial CD(alpha).
+            const float MASS = 715.21f;
             const float S = 9.1147f;
             const float RHO = 1.225f;
             const float G = 9.81f;
