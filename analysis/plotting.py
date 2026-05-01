@@ -86,14 +86,17 @@ def plot_all_paper_style_policies(
 
         cl_map = np.empty(query_pts.shape[0], dtype=np.float32)
         mu_dot_map = np.empty(query_pts.shape[0], dtype=np.float32)
+        dt_map = np.empty(query_pts.shape[0], dtype=np.float32)
 
         for i, pt in enumerate(query_pts):
             act, _ = get_optimal_action(pt, pi)
             cl_map[i] = act[0]
             mu_dot_map[i] = np.rad2deg(act[1])
+            dt_map[i] = act[2] if len(act) >= 3 else 0.0
 
         C_L = cl_map.reshape(M_centers.shape).T
         P_CMD = mu_dot_map.reshape(M_centers.shape).T
+        D_T = dt_map.reshape(M_centers.shape).T
 
         gamma_deg = np.rad2deg(gamma_plot)
         mu_deg = np.rad2deg(mu_plot)
@@ -135,6 +138,25 @@ def plot_all_paper_style_policies(
         fig_mu.tight_layout()
         fig_mu.savefig(Path(f"results/{prefix}_policy_MuDot_V_{v_slice}.png"), dpi=300, bbox_inches="tight")
         plt.close(fig_mu)
+
+        # Plot: Commanded Throttle (delta_t)
+        fig_dt, ax_dt = plt.subplots(figsize=(10, 4.5))
+        ax_dt.pcolormesh(mu_deg, gamma_deg, D_T, vmin=0.0, vmax=1.0, **mesh_kwargs)
+
+        ax_dt.set_title(f"Optimal policy for $\\delta_t^*$ (V/$V_s$ = {v_slice})", fontsize=16, pad=15)
+        ax_dt.set_ylabel("Flight path angle (deg)", fontsize=14)
+        ax_dt.set_xlabel("Bank angle (deg)", fontsize=14)
+        ax_dt.set_xlim([0, 180])
+        ax_dt.set_ylim([-90, 0])
+        ax_dt.set_xticks([0, 45, 90, 135, 180])
+        ax_dt.set_yticks([-90, -60, -30, 0])
+
+        ax_dt.text(45, -45, "$\\delta_t^* = 1.0$ (full)", ha="center", va="center", bbox=bbox_props, fontsize=12)
+        ax_dt.text(145, -30, "$\\delta_t^* = 0$ (idle)", ha="center", va="center", bbox=bbox_props, fontsize=12)
+
+        fig_dt.tight_layout()
+        fig_dt.savefig(Path(f"results/{prefix}_policy_DeltaT_V_{v_slice}.png"), dpi=300, bbox_inches="tight")
+        plt.close(fig_dt)
 
 
 # =====================================================================

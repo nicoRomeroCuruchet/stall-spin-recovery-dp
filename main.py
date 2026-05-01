@@ -101,7 +101,7 @@ def run_pipeline(level: int, plots: bool = True, retrain: bool = False) -> None:
         retrain: If True, ignore cached policy and train from scratch.
     """
     setup_func = get_setup_for_level(level)
-    prefix = f"banked_glider_L{level}"
+    prefix = f"banked_pullout_L{level}"
 
     logger.info(f"{'=' * 55}")
     logger.info(f"  Banked Glider — Grid Level {level}")

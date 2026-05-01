@@ -22,11 +22,11 @@ class ReducedBankedGliderPullout(AirplaneEnv):
             low=low_obs, high=high_obs, shape=(3,), dtype=np.float32
         )
         
-        low_action = np.array([-0.5, np.deg2rad(-30)], dtype=np.float32)
-        high_action = np.array([1.0, np.deg2rad(30)], dtype=np.float32)
-        
+        low_action = np.array([-0.5, np.deg2rad(-30), 0.0], dtype=np.float32)
+        high_action = np.array([1.0, np.deg2rad(30), 1.0], dtype=np.float32)
+
         self.action_space = spaces.Box(
-            low=low_action, high=high_action, shape=(2,), dtype=np.float32
+            low=low_action, high=high_action, shape=(3,), dtype=np.float32
         )
 
         self.np_random = np.random.default_rng()
@@ -63,19 +63,24 @@ class ReducedBankedGliderPullout(AirplaneEnv):
         self.airplane.bank_angle = self.state[:, 2].copy()
 
         action_clipped = np.clip(action_batch, self.action_space.low, self.action_space.high)
-        
+
         c_lift = action_clipped[:, 0]
         bank_rate = action_clipped[:, 1]
-        
+        throttle = action_clipped[:, 2]
+
         init_terminal, _ = self.terminal(self.state)
 
-        self.airplane.command_airplane(c_lift, bank_rate, 0.0)
+        self.airplane.command_airplane(c_lift, bank_rate, throttle)
 
         # Reward matched to the CUDA kernel:
         # r = v_true * sin(gamma) * dt - 0.01 * mu_dot^2 * dt
+        #     + 0.2 * throttle * max(1 - V/Vs, 0) * dt   (throttle bonus)
         v_true = self.airplane.airspeed_norm * self.airplane.STALL_AIRSPEED
         h_dot = v_true * np.sin(self.airplane.flight_path_angle)
-        reward = h_dot * self.airplane.TIME_STEP - 0.01 * bank_rate**2 * self.airplane.TIME_STEP
+        dt = self.airplane.TIME_STEP
+        reward = h_dot * dt - 0.01 * bank_rate**2 * dt
+        vn_clip = np.maximum(1.0 - self.airplane.airspeed_norm, 0.0)
+        reward += 0.2 * throttle * vn_clip * dt
 
         obs = self._get_obs()
         terminated, _ = self.terminal(obs) 

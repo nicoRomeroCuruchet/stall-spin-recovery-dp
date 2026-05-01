@@ -62,20 +62,24 @@ def generate_state_space(
 @nb.njit(parallel=True, fastmath=True, cache=True)
 def generate_action_space(
     cl_bins: np.ndarray,
-    br_bins: np.ndarray
+    br_bins: np.ndarray,
+    dt_bins: np.ndarray,
 ) -> np.ndarray:
-    """Generates the Cartesian product of the action space efficiently."""
+    """Generates the Cartesian product of the 3D action space (CL × mu_dot × delta_t)."""
     n_cl = len(cl_bins)
     n_br = len(br_bins)
-    total_actions = n_cl * n_br
+    n_dt = len(dt_bins)
+    total_actions = n_cl * n_br * n_dt
 
-    actions = np.empty((total_actions, 2), dtype=np.float32)
+    actions = np.empty((total_actions, 3), dtype=np.float32)
 
     for i in nb.prange(n_cl):
         for j in range(n_br):
-            idx = i * n_br + j
-            actions[idx, 0] = cl_bins[i]
-            actions[idx, 1] = br_bins[j]
+            for k in range(n_dt):
+                idx = i * (n_br * n_dt) + j * n_dt + k
+                actions[idx, 0] = cl_bins[i]
+                actions[idx, 1] = br_bins[j]
+                actions[idx, 2] = dt_bins[k]
 
     return actions
 
@@ -89,7 +93,7 @@ def generate_action_space(
 #  Level 3 — High fidelity             :181 × 125 × 177 ≈    4 M states
 #  Level 4 — Maximum (24 GB VRAM)      :361 × 250 × 354 ≈   32 M states
 #
-# Actions: all levels use 7 × 13 = 91-action grid (paper values).
+# Actions: all levels use 7 × 13 × 5 = 455-action grid (CL × mu_dot × delta_t).
 # =====================================================================
 
 def _make_config() -> PolicyIterationConfig:
@@ -104,9 +108,11 @@ def _make_config() -> PolicyIterationConfig:
 
 
 def _standard_actions() -> np.ndarray:
+    """7 × 13 × 5 = 455 actions: CL_cmd × mu_dot × delta_throttle."""
     cl_vals = np.linspace(-0.5, 1.0, 7, dtype=np.float32)
     br_vals = np.linspace(np.deg2rad(-30), np.deg2rad(30), 13, dtype=np.float32)
-    return generate_action_space(cl_vals, br_vals)
+    dt_vals = np.linspace(0.0, 1.0, 5, dtype=np.float32)
+    return generate_action_space(cl_vals, br_vals, dt_vals)
 
 
 def setup_level_1() -> Tuple[gym.Env, np.ndarray, np.ndarray, PolicyIterationConfig]:
