@@ -283,7 +283,8 @@ for four normalized airspeeds. Warmer colors indicate greater altitude loss.
 
 Optimal pullout trajectories comparing the DP Policy Iteration solution (global optimum, dark red)
 against a CasADi/IPOPT continuous NLP warm-started from the DP policy (cyan dashed).
-Each curve corresponds to a different initial bank angle μ₀ ∈ {30, 60, 90, 120, 150} deg (left to right).
+For Fig3 and Fig4 each curve corresponds to a different initial bank angle
+μ₀ ∈ {30, 60, 90, 120, 150} deg (left to right).
 
 > **Note**: the CasADi NLP solver is still the original 2D (CL, μ̇) idle-power formulation from
 > Bunge 2018, while the DP rollout uses the full 3D action with throttle. The DP curve will
@@ -292,6 +293,14 @@ Each curve corresponds to a different initial bank angle μ₀ ∈ {30, 60, 90, 
 | γ₀ = −30 deg, V/Vs = 1.2 | γ₀ = −60 deg, V/Vs = 1.2 |
 |:---:|:---:|
 | ![Validation Fig3](results/banked_pullout_L1_validation_guided_Fig3.png) | ![Validation Fig4](results/banked_pullout_L1_validation_guided_Fig4.png) |
+
+#### Spiral-dive scenario (single μ₀ = 30 deg, V/Vs = 1.3)
+
+Recovery from a moderate spiral dive: γ₀ = −45 deg, V/Vs = 1.3, μ₀ = 30 deg.
+This single-trajectory case is the natural reference scenario for cross-comparison
+with the 6-DOF banked-spin model on the same initial condition.
+
+<img src="results/banked_pullout_L1_validation_guided_Fig5.png" width="900"/>
 
 ---
 

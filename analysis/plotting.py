@@ -262,17 +262,40 @@ def validate_trajectories_with_casadi(pi, prefix: str) -> None:
     v_stall = env.airplane.STALL_AIRSPEED
 
     scenarios = [
-        {"gamma_0_deg": -30.0, "fig_id": 3},
-        {"gamma_0_deg": -60.0, "fig_id": 4}
+        {
+            "gamma_0_deg": -30.0,
+            "v_0_norm": 1.2,
+            "mu_0_list": [150.0, 120.0, 90.0, 60.0, 30.0],
+            "x_offsets": [-155.0, -25.0, 15.0, 45.0, 60.0],
+            "fig_id": 3,
+        },
+        {
+            "gamma_0_deg": -60.0,
+            "v_0_norm": 1.2,
+            "mu_0_list": [150.0, 120.0, 90.0, 60.0, 30.0],
+            "x_offsets": [-155.0, -25.0, 15.0, 45.0, 60.0],
+            "fig_id": 4,
+        },
+        # Spiral dive scenario (single mu, V/Vs = 1.3, gamma_0 = -45)
+        {
+            "gamma_0_deg": -45.0,
+            "v_0_norm": 1.3,
+            "mu_0_list": [30.0],
+            "x_offsets": [0.0],
+            "fig_id": 5,
+        },
     ]
-    mu_0_list = [150.0, 120.0, 90.0, 60.0, 30.0]
-    x_offsets = [-155.0, -25.0, 15.0, 45.0, 60.0]
-    v_0_norm = 1.2
 
     for scenario in scenarios:
         gamma_0_deg = scenario["gamma_0_deg"]
+        v_0_norm = scenario["v_0_norm"]
+        mu_0_list = scenario["mu_0_list"]
+        x_offsets = scenario["x_offsets"]
         fig_id = scenario["fig_id"]
-        logger.info(f"[*] Validating DP-Guided Trajectories for gamma_0 = {gamma_0_deg} deg...")
+        logger.info(
+            f"[*] Validating DP-Guided Trajectories for "
+            f"gamma_0 = {gamma_0_deg} deg, V/Vs = {v_0_norm}..."
+        )
 
         fig, ax = plt.subplots(figsize=(12, 7))
 
@@ -375,7 +398,8 @@ def validate_trajectories_with_casadi(pi, prefix: str) -> None:
 
         ax.set_title(
             f"Algorithm Validation: DP Policy vs DP-Guided Continuous NLP\n"
-            f"Starting from $\\gamma_0$ = {gamma_0_deg:.0f} deg, $V_0/V_s$ = 1.2",
+            f"Starting from $\\gamma_0$ = {gamma_0_deg:.0f} deg, "
+            f"$V_0/V_s$ = {v_0_norm:.1f}",
             fontsize=15, pad=15
         )
         ax.set_xlabel("x-position (m)", fontsize=13)
