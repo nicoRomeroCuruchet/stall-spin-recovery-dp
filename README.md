@@ -234,20 +234,24 @@ The throttle command is bounded to its physical range:
 
 ## Reward Shaping
 
-The per-step reward in the CUDA kernel matches the Gymnasium env step():
+The per-step reward in the CUDA kernel matches the Gymnasium env step() **and is identical to the
+original idle-power branch**:
 
 ```
-r = h_dot · dt   −  0.01 · μ̇²_cmd · dt   +  0.2 · δt · max(1 − V/Vs, 0) · dt
+r = h_dot · dt   −  0.01 · μ̇²_cmd · dt
 ```
 
 Term-by-term:
 
 - `h_dot · dt = V sin γ · dt` — primary cost (negative when descending; DP minimizes altitude loss).
 - `−0.01 · μ̇² · dt` — bank-rate effort penalty (Bunge 2018).
-- `+0.2 · δt · max(1 − V/Vs, 0) · dt` — **throttle bonus** (new). Provides a soft incentive to use
-  throttle while the aircraft is below stall speed; vanishes once V ≥ Vs. Without this term the
-  policy would saturate δt = 1 everywhere because higher thrust always helps the recovery and there
-  is no other cost on it.
+
+> **Why no throttle term?** Keeping the reward bit-identical to the idle-power branch makes the
+> A/B comparison clean: any difference in altitude loss between the two trained policies comes
+> from the structural change (δt available as a control + thrust term in V̇), not from a different
+> cost function. With this reward the policy may saturate δt = 1 in many states — that is the
+> physically optimal response when the only objective is to minimize altitude loss and there is
+> no penalty on thrust use.
 
 ---
 

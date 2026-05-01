@@ -72,15 +72,14 @@ class ReducedBankedGliderPullout(AirplaneEnv):
 
         self.airplane.command_airplane(c_lift, bank_rate, throttle)
 
-        # Reward matched to the CUDA kernel:
-        # r = v_true * sin(gamma) * dt - 0.01 * mu_dot^2 * dt
-        #     + 0.2 * throttle * max(1 - V/Vs, 0) * dt   (throttle bonus)
+        # Reward matched to the CUDA kernel and identical to the original
+        # idle-power branch: r = v_true * sin(gamma) * dt - 0.01 * mu_dot^2 * dt.
+        # No throttle term — the only structural delta vs the idle branch
+        # is that delta_t is part of the action space and enters V_dot.
         v_true = self.airplane.airspeed_norm * self.airplane.STALL_AIRSPEED
         h_dot = v_true * np.sin(self.airplane.flight_path_angle)
         dt = self.airplane.TIME_STEP
         reward = h_dot * dt - 0.01 * bank_rate**2 * dt
-        vn_clip = np.maximum(1.0 - self.airplane.airspeed_norm, 0.0)
-        reward += 0.2 * throttle * vn_clip * dt
 
         obs = self._get_obs()
         terminated, _ = self.terminal(obs) 

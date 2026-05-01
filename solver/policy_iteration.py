@@ -195,9 +195,10 @@ class PolicyIteration:
 
             float v_true = vn * v_stall;
             float h_dot = v_true * sinf(gamma);
+            // Reward identical to the original idle-power branch so the only
+            // structural difference vs (CL, mu_dot) is the action space, not
+            // the cost function.
             reward = h_dot * dt - 0.01f * mu_dot * mu_dot * dt;
-            // Throttle bonus: reward soft incentive to throttle back when V >= V_s
-            reward += 0.2f * throttle * fmaxf(1.0f - vn, 0.0f) * dt;
         }
 
         __device__ void get_barycentric_3d(

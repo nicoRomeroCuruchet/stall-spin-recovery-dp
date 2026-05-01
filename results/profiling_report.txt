@@ -3,14 +3,14 @@
   PROFILING REPORT — CUDA Event Timing
 =================================================================
   GPU:                  NVIDIA GeForce RTX 3070 Laptop GPU
-  State space:          53,280 states
+  State space:          409,311 states
   Action space:         455 actions
-  Convergence:          32 iterations
+  Convergence:          59 iterations
 -----------------------------------------------------------------
-  Setup (CPU):                479.1 µs
-  Policy Evaluation:           1.443 s  (avg 45.10 ms/iter)
-  Policy Improvement:         63.02 ms  (avg 1.97 ms/iter)
-  GPU->CPU Transfer:          509.5 µs
+  Setup (CPU):                933.4 µs
+  Policy Evaluation:          24.532 s  (avg 415.80 ms/iter)
+  Policy Improvement:          1.042 s  (avg 17.67 ms/iter)
+  GPU->CPU Transfer:           6.37 ms
 -----------------------------------------------------------------
-  TOTAL WALL TIME:             1.507 s
+  TOTAL WALL TIME:            25.582 s
 =================================================================
