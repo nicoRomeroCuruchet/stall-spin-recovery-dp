@@ -1,9 +1,9 @@
 """
 plotting.py
 -----------
-All visualization functions for the Banked Glider Policy Iteration results.
-Includes policy heatmaps, value function contours, trajectory simulations,
-and CasADi NLP validation plots.
+All visualization functions for the Banked Pullout Policy Iteration results.
+Includes policy heatmaps, value function contours, and DP recovery
+trajectories overlaid with the 6DOF branch's rollouts when available.
 """
 
 import logging
@@ -240,18 +240,17 @@ def plot_value_function_contours(pi, prefix: str) -> None:
 
 def validate_trajectories_with_casadi(pi, prefix: str) -> None:
     """
-    Validates the discrete Dynamic Programming (DP) policy against the continuous-time
-    Nonlinear Programming (NLP) CasADi solver.
+    Render DP recovery trajectories overlaid against the 6DOF branch's
+    rollouts (when CSVs are available in results/comparison_csvs/).
+
+    Three scenarios (Fig3, Fig4, Fig5) covering banked descents at
+    gamma_0 = -30, -60, -45 deg. CasADi NLP curve removed; only
+    the 3DOF DP and (optionally) the 6DOF DP are plotted.
+    Initial bank angles restricted to mu_0 in {30, 60, 90} deg —
+    higher banks are outside the 6DOF A.i envelope.
     """
     if pi.n_dims != 3:
-        logger.warning("Trajectory validation requires the 3D environment. Skipping.")
-        return
-
-    try:
-        from solver.casadi_optimizer import CasadiPulloutOptimizer
-        nlp_optimizer = CasadiPulloutOptimizer()
-    except Exception as e:
-        logger.error(f"Could not import CasadiPulloutOptimizer: {e}")
+        logger.warning("Trajectory plot requires the 3D environment. Skipping.")
         return
 
     env = pi.env
@@ -261,19 +260,21 @@ def validate_trajectories_with_casadi(pi, prefix: str) -> None:
     air_density = env.airplane.AIR_DENSITY
     v_stall = env.airplane.STALL_AIRSPEED
 
+    # mu_0_list shrunk to {90, 60, 30} so every entry has a matching valid
+    # 6DOF rollout (|mu| < 90 deg under simplification A.i).
     scenarios = [
         {
             "gamma_0_deg": -30.0,
             "v_0_norm": 1.2,
-            "mu_0_list": [150.0, 120.0, 90.0, 60.0, 30.0],
-            "x_offsets": [-155.0, -25.0, 15.0, 45.0, 60.0],
+            "mu_0_list": [90.0, 60.0, 30.0],
+            "x_offsets": [15.0, 45.0, 60.0],
             "fig_id": 3,
         },
         {
             "gamma_0_deg": -60.0,
             "v_0_norm": 1.2,
-            "mu_0_list": [150.0, 120.0, 90.0, 60.0, 30.0],
-            "x_offsets": [-155.0, -25.0, 15.0, 45.0, 60.0],
+            "mu_0_list": [90.0, 60.0, 30.0],
+            "x_offsets": [15.0, 45.0, 60.0],
             "fig_id": 4,
         },
         # Spiral dive scenario (single mu, V/Vs = 1.3, gamma_0 = -45)
@@ -293,7 +294,7 @@ def validate_trajectories_with_casadi(pi, prefix: str) -> None:
         x_offsets = scenario["x_offsets"]
         fig_id = scenario["fig_id"]
         logger.info(
-            f"[*] Validating DP-Guided Trajectories for "
+            f"[*] Rendering DP recovery trajectories for "
             f"gamma_0 = {gamma_0_deg} deg, V/Vs = {v_0_norm}..."
         )
 
@@ -304,7 +305,6 @@ def validate_trajectories_with_casadi(pi, prefix: str) -> None:
             x_dp, h_dp, xi_dp = 0.0, 0.0, 0.0
 
             s_hist = {"v": [v_norm], "gamma": [gamma], "mu": [mu], "h": [h_dp], "x": [x_dp], "xi": [xi_dp]}
-            c_hist = {"cl": [], "mu_dot": []}
 
             step_count = 0
             max_steps = 2000
@@ -312,10 +312,7 @@ def validate_trajectories_with_casadi(pi, prefix: str) -> None:
             while gamma < 0.0 and step_count < max_steps:
                 state_vector = np.array([gamma, v_norm, mu], dtype=np.float32)
                 action, _ = get_optimal_action(state_vector, pi)
-                c_lift, bank_rate = action[0], action[1]
-
-                c_hist["cl"].append(c_lift)
-                c_hist["mu_dot"].append(bank_rate)
+                c_lift = action[0]
 
                 v_true = v_norm * v_stall
                 lift_force = 0.5 * air_density * wing_area * (v_true ** 2) * c_lift
@@ -343,43 +340,13 @@ def validate_trajectories_with_casadi(pi, prefix: str) -> None:
                 s_hist["xi"].append(xi_dp)
                 step_count += 1
 
-            dp_T = step_count * dt
-            n_nodes = 150
-            t_dp_states = np.linspace(0, dp_T, len(s_hist["v"]))
-            t_dp_ctrls = np.linspace(0, dp_T, len(c_hist["cl"]))
-            t_cas_states = np.linspace(0, dp_T, n_nodes + 1)
-            t_cas_ctrls = np.linspace(0, dp_T, n_nodes)
-
-            dp_seed = {
-                "T": dp_T,
-                "v_norm": np.interp(t_cas_states, t_dp_states, s_hist["v"]),
-                "gamma": np.interp(t_cas_states, t_dp_states, s_hist["gamma"]),
-                "mu": np.interp(t_cas_states, t_dp_states, s_hist["mu"]),
-                "h": np.interp(t_cas_states, t_dp_states, s_hist["h"]),
-                "x": np.interp(t_cas_states, t_dp_states, s_hist["x"]),
-                "xi": np.interp(t_cas_states, t_dp_states, s_hist["xi"]),
-                "c_lift": np.interp(t_cas_ctrls, t_dp_ctrls, c_hist["cl"]),
-                "mu_dot": np.interp(t_cas_ctrls, t_dp_ctrls, c_hist["mu_dot"])
-            }
-
-            res = nlp_optimizer.solve_trajectory(
-                v0_norm=v_0_norm, gamma0_deg=gamma_0_deg, mu0_deg=mu_0_deg,
-                n_nodes=n_nodes, dp_seed=dp_seed
-            )
-
-            gamma_array = res.get("gamma", np.array([-1.0]))
-            valid_indices = np.where(gamma_array >= 0.0)[0]
-            cutoff_idx = valid_indices[0] + 1 if len(valid_indices) > 0 else len(gamma_array)
-
-            x_history_cas = (res["x"] + x_offset)[:cutoff_idx]
-            h_history_cas = res["h"][:cutoff_idx]
             x_history_dp = np.array(s_hist["x"]) + x_offset
             h_history_dp = np.array(s_hist["h"])
 
-            lbl_dp = "DP Policy Iteration (AI Global Optimum)" if mu_0_deg == mu_0_list[0] else ""
-            lbl_cas = "CasADi NLP (DP-Guided Continuous)" if mu_0_deg == mu_0_list[0] else ""
+            lbl_dp = "3DOF DP Policy Iteration" if mu_0_deg == mu_0_list[0] else ""
 
-            ax.plot(x_history_dp, h_history_dp, color='darkred', linewidth=2.0, linestyle='-', label=lbl_dp, zorder=2)
+            ax.plot(x_history_dp, h_history_dp, color='darkred', linewidth=2.0,
+                    linestyle='-', label=lbl_dp, zorder=2)
 
             mark_every = max(1, len(x_history_dp) // 10)
             marker_indices = list(range(0, len(x_history_dp), mark_every))
@@ -392,12 +359,82 @@ def validate_trajectories_with_casadi(pi, prefix: str) -> None:
                     dh = h_history_dp[mi] - h_history_dp[mi - 1]
                 angle = np.rad2deg(np.arctan2(dh, dx))
                 ax.annotate('✈', xy=(x_history_dp[mi], h_history_dp[mi]),
-                            fontsize=14, ha='center', va='center', rotation=angle, color='darkred', zorder=5)
+                            fontsize=14, ha='center', va='center',
+                            rotation=angle, color='darkred', zorder=5)
 
-            ax.plot(x_history_cas, h_history_cas, color='cyan', linewidth=1.5, linestyle='--', label=lbl_cas, zorder=4)
+            # ---------------------------------------------------------------
+            # Optional 6DOF overlay (Camino A): if a CSV from the 6DOF branch
+            # exists for this scenario, plot it as a third trajectory.
+            # File layout: results/comparison_csvs/6dof_g{gamma0}_v{V0}_mu{mu0}.csv
+            # Columns: t, gamma, v_norm, alpha, mu, p, q, x_position, h_loss
+            # ---------------------------------------------------------------
+            csv_path = Path(
+                f"results/comparison_csvs/6dof_g{int(round(gamma_0_deg))}"
+                f"_v{v_0_norm:.1f}_mu{int(round(mu_0_deg))}.csv"
+            )
+            if csv_path.exists():
+                try:
+                    csv_data = np.loadtxt(csv_path, delimiter=",", skiprows=1)
+                    # Filter out degenerate rollouts: the 6DOF declares
+                    # immediate crash for any |mu_0| >= 90 deg under
+                    # simplification A.i, producing a 1-2 row CSV. Skip those.
+                    if csv_data.ndim < 2 or len(csv_data) < 50:
+                        logger.info(
+                            f"    [.] Skipping degenerate 6DOF rollout "
+                            f"{csv_path.name} ({len(csv_data)} rows — "
+                            f"likely outside A.i envelope |mu| >= 90 deg)"
+                        )
+                    else:
+                        x_6dof = csv_data[:, 7] + x_offset   # x_position column
+                        h_6dof = csv_data[:, 8]              # h_loss column
+                        # Only label the first valid 6DOF curve so the legend
+                        # has at most one '6DOF DP' entry per figure.
+                        lbl_6dof = (
+                            "6DOF DP (Riley aero, full lateral dynamics)"
+                            if not any(
+                                (line.get_label() or "").startswith("6DOF DP")
+                                for line in ax.lines
+                            )
+                            else ""
+                        )
+                        ax.plot(
+                            x_6dof, h_6dof,
+                            color='darkgreen', linewidth=2.0, linestyle='-',
+                            label=lbl_6dof, zorder=3, alpha=0.85,
+                        )
+
+                        # Plane glyphs along the 6DOF trajectory (same
+                        # convention as the 3DOF red curve).
+                        mark_every_6 = max(1, len(x_6dof) // 10)
+                        marker_indices_6 = list(range(0, len(x_6dof), mark_every_6))
+                        for mi in marker_indices_6:
+                            if mi < len(x_6dof) - 1:
+                                dx_6 = x_6dof[mi + 1] - x_6dof[mi]
+                                dh_6 = h_6dof[mi + 1] - h_6dof[mi]
+                            else:
+                                dx_6 = x_6dof[mi] - x_6dof[mi - 1]
+                                dh_6 = h_6dof[mi] - h_6dof[mi - 1]
+                            angle_6 = np.rad2deg(np.arctan2(dh_6, dx_6))
+                            ax.annotate(
+                                '✈',
+                                xy=(x_6dof[mi], h_6dof[mi]),
+                                fontsize=14, ha='center', va='center',
+                                rotation=angle_6, color='darkgreen',
+                                zorder=5,
+                            )
+
+                        logger.info(
+                            f"    [+] Overlaid 6DOF trajectory from {csv_path.name}"
+                        )
+                except Exception as e:
+                    logger.warning(
+                        f"    [!] Failed to read 6DOF CSV {csv_path.name}: {e}"
+                    )
+            else:
+                logger.info(f"    [.] No 6DOF CSV at {csv_path} (skipping overlay)")
 
         ax.set_title(
-            f"Algorithm Validation: DP Policy vs DP-Guided Continuous NLP\n"
+            f"Recovery Trajectories: 3DOF DP vs 6DOF DP\n"
             f"Starting from $\\gamma_0$ = {gamma_0_deg:.0f} deg, "
             f"$V_0/V_s$ = {v_0_norm:.1f}",
             fontsize=15, pad=15

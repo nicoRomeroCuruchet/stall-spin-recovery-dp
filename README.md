@@ -306,6 +306,14 @@ For Fig3 and Fig4 each curve corresponds to a different initial bank angle
 > Bunge 2018, while the DP rollout uses the full 3D action with throttle. The DP curve will
 > generally show smaller altitude loss than CasADi by virtue of having access to the extra control.
 
+> **6DOF overlay (dark green)**: when CSV trajectories from the 6DOF banked-spin branch
+> (`6dof-banked-spin-riley`) are present in `results/comparison_csvs/`, they are overlaid on each
+> figure for direct visual comparison. The 6DOF model operates under simplification A.i
+> (β = 0, r = 0, δr = 0) which **declares unrecoverable any initial state with |μ₀| ≥ 90°**
+> (inverted attitudes are outside its envelope). For those scenarios only the 3DOF idealized
+> policy and the CasADi NLP are shown — the absent green line is a physically meaningful
+> limitation, not a missing data point.
+
 | γ₀ = −30 deg, V/Vs = 1.2 | γ₀ = −60 deg, V/Vs = 1.2 |
 |:---:|:---:|
 | ![Validation Fig3](results/banked_pullout_L3_validation_guided_Fig3.png) | ![Validation Fig4](results/banked_pullout_L3_validation_guided_Fig4.png) |
