@@ -7,10 +7,10 @@
   Action space:         455 actions
   Convergence:          121 iterations
 -----------------------------------------------------------------
-  Setup (CPU):                 4.53 ms
+  Setup (CPU):                 4.60 ms
   Policy Evaluation:    332.5 s (5.5 min)  (avg 2.748 s/iter)
-  Policy Improvement:         20.455 s  (avg 169.05 ms/iter)
-  GPU->CPU Transfer:           9.43 ms
+  Policy Improvement:         22.399 s  (avg 185.12 ms/iter)
+  GPU->CPU Transfer:           9.57 ms
 -----------------------------------------------------------------
-  TOTAL WALL TIME:      352.9 s (5.9 min)
+  TOTAL WALL TIME:      355.0 s (5.9 min)
 =================================================================

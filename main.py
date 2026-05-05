@@ -29,6 +29,9 @@ from analysis.plotting import (
     plot_all_paper_style_policies,
     plot_value_function_contours,
     validate_trajectories_with_casadi,
+    plot_final_mu_heatmap,
+    plot_final_mu_heatmap_at_v,
+    plot_final_gamma_heatmap_at_v,
 )
 
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
@@ -123,6 +126,17 @@ def run_pipeline(level: int, plots: bool = True, retrain: bool = False) -> None:
         plot_all_paper_style_policies(pi, prefix)
         plot_value_function_contours(pi, prefix)
         validate_trajectories_with_casadi(pi, prefix)
+        # Final-mu heatmaps: where does the policy leave the bank angle
+        # for each starting point?
+        # Sweep over (gamma_0, V_0) at fixed mu_0:
+        plot_final_mu_heatmap(pi, prefix, mu_0_deg=30.0)
+        plot_final_mu_heatmap(pi, prefix, mu_0_deg=60.0)
+        # Sweep over (gamma_0, mu_0) at fixed V_0:
+        plot_final_mu_heatmap_at_v(pi, prefix, v_slice=1.2)
+        plot_final_mu_heatmap_at_v(pi, prefix, v_slice=4.0)
+        # Sweep over (gamma_0, mu_0) at fixed V_0, colour = gamma_final:
+        plot_final_gamma_heatmap_at_v(pi, prefix, v_slice=1.2)
+        plot_final_gamma_heatmap_at_v(pi, prefix, v_slice=4.0)
 
 
 # =====================================================================
