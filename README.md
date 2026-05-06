@@ -71,5 +71,5 @@ Each environment is a branch in this repository.
 | — | ~~Banked Glider Spin~~ | ~~γ, V, α, μ, p, q~~ | ~~δe, δa, δr~~ | ~~δr = 0, β = 0~~ | Planned |
 | — | ~~Banked Pullout~~ | ~~γ, V, α, μ, p, q~~ | ~~δe, δa, δt, δr~~ | ~~β = 0~~ | Planned |
 | 5 | Banked Spin | γ, V, α, μ, p, q | δe, δa, δt, ~~δr~~ | β = 0 | implemented |
-| 6 | Full Environment | γ, V, α, β, μ, p, q, r | δe, δa, δt, δr | implemented | — |
+| 6 | Full Environment | γ, V, α, β, μ, p, q, r | δe, δa, δt, δr | — | implemented |
 
