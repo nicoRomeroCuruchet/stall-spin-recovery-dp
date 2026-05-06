@@ -145,14 +145,185 @@ class Grumman:
              -0.000600, -0.000500, -0.000400, -0.000330],
             dtype=np.float32) * 57.2958
 
-        # Physical model
-        self.MASS = 715.21  # Mass (m) [kg] — Riley Table I: 1577 lb × 0.453592
-        self.WING_SURFACE_AREA = 9.1147  # Wing surface area (S) [m2]
-        self.CHORD = 1.22  # Chord (c) [m]
-        self.WING_SPAN = 8.066  # Wing Span (b) [m] — Riley Table I: 26.46 ft × 0.3048
-        self.I_XX = 808.06   # Inertia [Kg.m^2]
-        self.I_YY = 1000.60  # Inertia [Kg.m^2] — Riley Table I: 738 slug·ft² × 1.35582
-        self.I_ZZ = 1719.18  # Inertia [Kg.m^2] — Riley Table I: 1268 slug·ft² × 1.35582
+        # Cl_β: dihedral effect (per deg → per rad). Riley Table III(f).
+        self._CL_ROLL_BETA_TABLE_CT0 = np.array(
+            [-0.00140, -0.00115, -0.00115, -0.00190, -0.00315, -0.00365,
+             -0.00400, -0.00420, -0.00435, -0.00450,
+             -0.00450, -0.00420, -0.00400, -0.00390],
+            dtype=np.float32) * 57.2958
+        self._CL_ROLL_BETA_TABLE_CT05 = np.array(
+            [-0.00273, -0.00215, -0.00182, -0.00190, -0.00239, -0.00265,
+             -0.00267, -0.00237, -0.00212, -0.00183,
+             -0.00217, -0.00353, -0.00467, -0.00523],
+            dtype=np.float32) * 57.2958
+
+        # Cl_δr: rudder cross-coupling on roll (per deg → per rad), CT-indep
+        self._CL_ROLL_DR_TABLE = np.array(
+            [0.00025, 0.00025, 0.00025, 0.00025, 0.00025, 0.00025,
+             0.00025, 0.00025, 0.00025, 0.00025,
+             0.00013, 0.0, 0.0, 0.0],
+            dtype=np.float32) * 57.2958
+
+        # Cl_r̂: yaw-rate cross effect on roll (per rad)
+        self._CL_ROLL_RHAT_TABLE_CT0 = np.array(
+            [0.1000, 0.1300, 0.1600, 0.1900, 0.1400, 0.1300,
+             0.1200, 0.1100, 0.1000, 0.0900,
+             0.0700, 0.0700, 0.0700, 0.1000],
+            dtype=np.float32)
+        self._CL_ROLL_RHAT_TABLE_CT05 = np.array(
+            [0.1150, 0.1450, 0.1750, 0.2050, 0.1540, 0.1450,
+             0.1290, 0.1140, 0.1040, 0.0950,
+             0.0760, 0.0750, 0.0740, 0.1040],
+            dtype=np.float32)
+
+        # =====================================================================
+        # Riley (1985) Table III(d) — Side-force coefficients (Cy)
+        # Used in the 8-DOF model when β ≠ 0 (full lateral dynamics).
+        # =====================================================================
+
+        # Cy_o: asymmetric base side-force (dimensionless)
+        self._CY_O_TABLE_CT0 = np.zeros(14, dtype=np.float32)
+        self._CY_O_TABLE_CT05 = np.array(
+            [0.0810, 0.0540, 0.0270, 0.0, -0.0270, -0.0378,
+             -0.0486, -0.0540, -0.0540, -0.0540,
+             -0.0540, -0.0540, -0.0540, -0.0540],
+            dtype=np.float32)
+
+        # Cy_β: side-force per sideslip (per deg → per rad)
+        self._CY_BETA_TABLE_CT0 = np.array(
+            [-0.01300, -0.01250, -0.01180, -0.01100, -0.01090, -0.01080,
+             -0.00980, -0.00880, -0.00820, -0.00780,
+             -0.00670, -0.00600, -0.00620, -0.00680],
+            dtype=np.float32) * 57.2958
+        self._CY_BETA_TABLE_CT05 = np.array(
+            [-0.02260, -0.02260, -0.02260, -0.02260, -0.02260, -0.02260,
+             -0.02210, -0.02130, -0.02100, -0.02080,
+             -0.02030, -0.02020, -0.02100, -0.02220],
+            dtype=np.float32) * 57.2958
+
+        # Cy_δa: aileron cross effect on side-force (per deg → per rad), CT-indep
+        self._CY_DA_TABLE = np.array(
+            [-0.000100, -0.000080, -0.000090, -0.000100, -0.000140, -0.000150,
+             -0.000160, -0.000130, -0.000110, -0.000100,
+             -0.000080, -0.000100, 0.0, 0.0],
+            dtype=np.float32) * 57.2958
+
+        # Cy_δr: rudder side-force (per deg → per rad), CT-indep
+        self._CY_DR_TABLE = np.array(
+            [-0.0140, -0.0040, 0.0060, 0.0160, 0.0260, 0.0300,
+             0.0340, 0.0380, 0.0420, 0.0460,
+             0.0560, 0.0660, 0.0330, 0.0],
+            dtype=np.float32) * 57.2958
+
+        # Cy_p̂: roll-rate cross effect on side-force (per rad)
+        self._CY_PHAT_TABLE_CT0 = np.array(
+            [0.00244, 0.00263, 0.00282, 0.00295, 0.00307, 0.00295,
+             0.00282, 0.00267, 0.00255, 0.00242,
+             0.00189, 0.00137, 0.00093, 0.00053],
+            dtype=np.float32)
+        self._CY_PHAT_TABLE_CT05 = np.array(
+            [0.00589, 0.00629, 0.00674, 0.00722, 0.00773, 0.00775,
+             0.00777, 0.00777, 0.00779, 0.00779,
+             0.00665, 0.00558, 0.00425, 0.00295],
+            dtype=np.float32)
+
+        # Cy_r̂: yaw-rate cross effect on side-force (per rad)
+        self._CY_RHAT_TABLE_CT0 = np.array(
+            [0.8000, 0.9000, 1.0000, 1.1000, 0.8000, 0.6000,
+             0.4000, 0.2000, 0.0, -0.2500,
+             -0.2400, -0.1200, 0.0, 0.0],
+            dtype=np.float32)
+        self._CY_RHAT_TABLE_CT05 = np.array(
+            [1.0110, 1.1110, 1.2110, 1.3110, 1.0010, 0.8020,
+             0.5290, 0.2490, 0.0560, -0.1870,
+             -0.1680, -0.0450, 0.0610, 0.0520],
+            dtype=np.float32)
+
+        # =====================================================================
+        # Riley (1985) Table III(e) — Yawing-moment coefficients (Cn)
+        # =====================================================================
+
+        # Cn_o: asymmetric base yawing moment (dimensionless)
+        self._CN_O_TABLE_CT0 = np.array(
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+             -0.0010, -0.0010, -0.0010, -0.0010,
+             -0.0010, -0.0010, -0.0010, -0.0010],
+            dtype=np.float32)
+        self._CN_O_TABLE_CT05 = np.array(
+            [-0.0166, -0.0166, -0.0166, -0.0166, -0.0166, -0.0166,
+             -0.0142, -0.0118, -0.0094, -0.0070,
+             -0.0010, -0.0040, -0.0070, -0.0100],
+            dtype=np.float32)
+
+        # Cn_β: weathercock stability (per deg → per rad). Positive = stable.
+        self._CN_BETA_TABLE_CT0 = np.array(
+            [0.00250, 0.00220, 0.00192, 0.00175, 0.00142, 0.00128,
+             0.00110, 0.00090, 0.00080, 0.00070,
+             0.00032, -0.00002, -0.00025, -0.00038],
+            dtype=np.float32) * 57.2958
+        self._CN_BETA_TABLE_CT05 = np.array(
+            [0.00327, 0.00304, 0.00292, 0.00287, 0.00265, 0.00256,
+             0.00242, 0.00227, 0.00221, 0.00216,
+             0.00190, 0.00167, 0.00156, 0.00154],
+            dtype=np.float32) * 57.2958
+
+        # Cn_δa: aileron adverse-yaw (per deg → per rad), CT-indep
+        self._CN_DA_TABLE = np.array(
+            [0.000090, 0.000070, 0.000050, 0.000030, 0.000010, 0.0,
+             -0.000030, -0.000060, -0.000100, -0.000150,
+             -0.000090, -0.000040, 0.0, 0.000030],
+            dtype=np.float32) * 57.2958
+
+        # Cn_δr: rudder yawing moment (per rad — Riley's value is large; per-rad
+        # interpretation matches plausible rudder authority for AA-1 Yankee).
+        self._CN_DR_TABLE_CT0 = np.array(
+            [-0.2000, -0.2000, -0.2000, -0.2000, -0.2000, -0.2000,
+             -0.1300, -0.0500, -0.0600, -0.0700,
+             -0.1000, -0.1000, -0.1000, -0.1000],
+            dtype=np.float32)
+        self._CN_DR_TABLE_CT05 = np.array(
+            [-0.2900, -0.2900, -0.2900, -0.2900, -0.2870, -0.2860,
+             -0.1850, -0.0710, -0.0840, -0.0970,
+             -0.1350, -0.1320, -0.1260, -0.1220],
+            dtype=np.float32)
+
+        # Cn_p̂: roll-rate cross effect on yaw (per rad)
+        self._CN_PHAT_TABLE_CT0 = np.array(
+            [-0.0300, -0.0400, -0.0500, -0.0600, -0.0700, -0.0600,
+             -0.0300, 0.0, 0.0300, 0.0400,
+             0.0150, 0.0150, 0.0150, 0.0150],
+            dtype=np.float32)
+        self._CN_PHAT_TABLE_CT05 = np.array(
+            [-0.0480, -0.0580, -0.0680, -0.0780, -0.0880, -0.0770,
+             -0.0470, -0.0160, 0.0140, 0.0400,
+             0.0150, 0.0150, 0.0100, 0.0070],
+            dtype=np.float32)
+
+        # Cn_r̂: yaw damping (per rad). Negative = stable.
+        self._CN_RHAT_TABLE_CT0 = np.array(
+            [-0.00116, -0.00125, -0.00134, -0.00140, -0.00146, -0.00140,
+             -0.00134, -0.00127, -0.00121, -0.00115,
+             -0.00090, -0.00065, -0.00044, -0.00025],
+            dtype=np.float32)
+        self._CN_RHAT_TABLE_CT05 = np.array(
+            [-0.00280, -0.00299, -0.00320, -0.00343, -0.00367, -0.00368,
+             -0.00369, -0.00369, -0.00370, -0.00370,
+             -0.00316, -0.00265, -0.00202, -0.00140],
+            dtype=np.float32)
+
+        # Physical model — Riley Table I (AA-1 Yankee)
+        self.MASS = 715.21    # [kg]      — 1577 lb × 0.453592
+        self.WING_SURFACE_AREA = 9.1147   # [m2]
+        self.CHORD = 1.22                 # [m]
+        self.WING_SPAN = 8.066            # [m]      — 26.46 ft × 0.3048
+        self.I_XX = 808.06                # [kg·m^2] — 596 slug·ft²
+        self.I_YY = 1000.60               # [kg·m^2] — 738 slug·ft²
+        self.I_ZZ = 1719.18               # [kg·m^2] — 1268 slug·ft²
+        self.I_XZ = 0.0                   # [kg·m^2] — Riley Table I (zero for AA-1)
+        # Propeller gyroscopic
+        self.I_P = 1.559                  # [kg·m^2] — 1.15 slug·ft² (Riley Table I)
+        # Engine: 2600 rpm full = 272.27 rad/s; n(δt) = N_MAX_RAD_S · δt (linear approx)
+        self.N_MAX_RAD_S = 272.27         # [rad/s]
 
         # Stall angle of attack (αs) [rad] — flat-top onset per Riley Table III
         self.ALPHA_STALL = np.deg2rad(14)
@@ -322,6 +493,70 @@ class Grumman:
             alpha, ct, self._CL_ROLL_PHAT_TABLE_CT0, self._CL_ROLL_PHAT_TABLE_CT05)
         cl_da = np.interp(alpha, self._CL_O_ALPHA_RAD, self._CL_ROLL_DA_TABLE)
         return cl_o + cl_p * p_hat + cl_da * aileron
+
+    def _rolling_moment_coefficient_full(
+        self, alpha, beta, p_hat, r_hat, aileron, rudder, ct=0.0,
+    ):
+        """
+        Full rolling moment coefficient (8-DOF model — Riley III(f) all terms).
+
+            Cl_b = Cl_o + Cl_β·β + Cl_p̂·p̂ + Cl_r̂·r̂ + Cl_δa·δa + Cl_δr·δr
+        """
+        cl_o = self._bilinear_interp(
+            alpha, ct, self._CL_ROLL_O_TABLE_CT0, self._CL_ROLL_O_TABLE_CT05)
+        cl_b = self._bilinear_interp(
+            alpha, ct, self._CL_ROLL_BETA_TABLE_CT0, self._CL_ROLL_BETA_TABLE_CT05)
+        cl_p = self._bilinear_interp(
+            alpha, ct, self._CL_ROLL_PHAT_TABLE_CT0, self._CL_ROLL_PHAT_TABLE_CT05)
+        cl_r = self._bilinear_interp(
+            alpha, ct, self._CL_ROLL_RHAT_TABLE_CT0, self._CL_ROLL_RHAT_TABLE_CT05)
+        cl_da = np.interp(alpha, self._CL_O_ALPHA_RAD, self._CL_ROLL_DA_TABLE)
+        cl_dr = np.interp(alpha, self._CL_O_ALPHA_RAD, self._CL_ROLL_DR_TABLE)
+        return (cl_o + cl_b * beta + cl_p * p_hat + cl_r * r_hat
+                + cl_da * aileron + cl_dr * rudder)
+
+    def _side_force_coefficient(
+        self, alpha, beta, p_hat, r_hat, aileron, rudder, ct=0.0,
+    ):
+        """
+        Side-force coefficient (Riley Table III(d)).
+
+            Cy = Cy_o + Cy_β·β + Cy_p̂·p̂ + Cy_r̂·r̂ + Cy_δa·δa + Cy_δr·δr
+        """
+        cy_o = self._bilinear_interp(
+            alpha, ct, self._CY_O_TABLE_CT0, self._CY_O_TABLE_CT05)
+        cy_b = self._bilinear_interp(
+            alpha, ct, self._CY_BETA_TABLE_CT0, self._CY_BETA_TABLE_CT05)
+        cy_p = self._bilinear_interp(
+            alpha, ct, self._CY_PHAT_TABLE_CT0, self._CY_PHAT_TABLE_CT05)
+        cy_r = self._bilinear_interp(
+            alpha, ct, self._CY_RHAT_TABLE_CT0, self._CY_RHAT_TABLE_CT05)
+        cy_da = np.interp(alpha, self._CL_O_ALPHA_RAD, self._CY_DA_TABLE)
+        cy_dr = np.interp(alpha, self._CL_O_ALPHA_RAD, self._CY_DR_TABLE)
+        return (cy_o + cy_b * beta + cy_p * p_hat + cy_r * r_hat
+                + cy_da * aileron + cy_dr * rudder)
+
+    def _yawing_moment_coefficient(
+        self, alpha, beta, p_hat, r_hat, aileron, rudder, ct=0.0,
+    ):
+        """
+        Yawing-moment coefficient (Riley Table III(e)).
+
+            Cn = Cn_o + Cn_β·β + Cn_p̂·p̂ + Cn_r̂·r̂ + Cn_δa·δa + Cn_δr·δr
+        """
+        cn_o = self._bilinear_interp(
+            alpha, ct, self._CN_O_TABLE_CT0, self._CN_O_TABLE_CT05)
+        cn_b = self._bilinear_interp(
+            alpha, ct, self._CN_BETA_TABLE_CT0, self._CN_BETA_TABLE_CT05)
+        cn_p = self._bilinear_interp(
+            alpha, ct, self._CN_PHAT_TABLE_CT0, self._CN_PHAT_TABLE_CT05)
+        cn_r = self._bilinear_interp(
+            alpha, ct, self._CN_RHAT_TABLE_CT0, self._CN_RHAT_TABLE_CT05)
+        cn_dr = self._bilinear_interp(
+            alpha, ct, self._CN_DR_TABLE_CT0, self._CN_DR_TABLE_CT05)
+        cn_da = np.interp(alpha, self._CL_O_ALPHA_RAD, self._CN_DA_TABLE)
+        return (cn_o + cn_b * beta + cn_p * p_hat + cn_r * r_hat
+                + cn_da * aileron + cn_dr * rudder)
 
     def _rolling_moment_at_speed_and_cl(self, airspeed, rolling_moment_coefficient):
         return (
